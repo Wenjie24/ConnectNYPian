@@ -1,2 +1,4 @@
+#use your own locally installed venv, its excluded from the repository
 
+venv
 .idea/misc.xml
