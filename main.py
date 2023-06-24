@@ -70,7 +70,20 @@ def createpost():
     
     return render_template('/processes/createpost.html', form=form)
 
-        
+# function for creating a comment, must assign createcomment form to a variable in applicable routes
+def createcomment(form):
+    if request.method == 'POST':
+        body = form.body.data
+
+        sql = "INSERT INTO comments (body) VALUES (%s)"
+        val = (body)
+        mycursor.execute(sql, val)
+        mydb.commit()
+        print("comment added to database")
+
+    pass
+
+    
 
 
 if __name__ == '__main__':
