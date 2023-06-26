@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session, app
 import mysql.connector
 from mysql.connector import Error
-from datetime import datetime, timedelta
+from datetime import date, timedelta
 from forms import *
 
 app = Flask(__name__)
@@ -14,6 +14,29 @@ mydb = mysql.connector.connect(
 )
 
 mycursor = mydb.cursor()
+
+
+# EXTERNAL FUNCTIONS
+
+# function for creating a comment, must assign createcomment form to a variable in applicable routes
+def createcomment(form):
+    if request.method == 'POST':
+        body = form.body.data
+
+        sql = "INSERT INTO comments (body) VALUES (%s)"
+        val = (body)
+        mycursor.execute(sql, val)
+        mydb.commit()
+        print("comment added to database")
+
+    pass
+
+def createlike():
+    # idrk how do ts rn
+
+    pass
+
+# END OF EXTERNAL FUNCTIONS
 
 
 
@@ -55,13 +78,12 @@ def createpost():
         # assign form data to variables
         title = form.title.data
         body = form.body.data
-        time = datetime.now()
-        publish_time = time.strftime("%H:%M:%S")
+        date = date.today()
         category = form.category.data
 
         # add form data to database
         sql = "INSERT INTO posts (title, body, publish_time, category) VALUES (%s, %s, %s, %s)"
-        val = (title, body, publish_time, category)
+        val = (title, body, date, category)
         mycursor.execute(sql, val)
         mydb.commit()
         print("post added to database, redirecting to homepage")
@@ -70,18 +92,6 @@ def createpost():
     
     return render_template('/processes/createpost.html', form=form)
 
-# function for creating a comment, must assign createcomment form to a variable in applicable routes
-def createcomment(form):
-    if request.method == 'POST':
-        body = form.body.data
-
-        sql = "INSERT INTO comments (body) VALUES (%s)"
-        val = (body)
-        mycursor.execute(sql, val)
-        mydb.commit()
-        print("comment added to database")
-
-    pass
 
     
 
