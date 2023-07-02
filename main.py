@@ -31,8 +31,13 @@ def createcomment(form):
 
     pass
 
-def createlike():
-    # idrk how do ts rn
+def createlike(post_id):
+    if 'id' in session:
+        like_date = date.today
+        sql = "INSERT INTO like (like_date, post_id, account_id) VALUES (%s, %s, %s)"
+        val = (like_date, post_id, session[id])
+        mycursor.execute(sql, val)
+        mydb.commit()
 
     pass
 
