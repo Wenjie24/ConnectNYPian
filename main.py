@@ -19,12 +19,12 @@ mycursor = mydb.cursor()
 # EXTERNAL FUNCTIONS
 
 # function for creating a comment, must assign createcomment form to a variable in applicable routes
-def createcomment(form):
+def createcomment(form, post_id):
     if request.method == 'POST':
         body = form.body.data
 
-        sql = "INSERT INTO comments (body) VALUES (%s)"
-        val = (body)
+        sql = "INSERT INTO comments (body, post_id, acocunt_id) VALUES (%s, %s, %s)"
+        val = (body, post_id, session[id])
         mycursor.execute(sql, val)
         mydb.commit()
         print("comment added to database")
@@ -38,6 +38,7 @@ def createlike(post_id):
         val = (like_date, post_id, session[id])
         mycursor.execute(sql, val)
         mydb.commit()
+        print("like added to database")
 
     pass
 
