@@ -1,5 +1,7 @@
+import MySQLdb.cursors
 from flask import Flask, render_template, request, redirect, url_for, session, app
 import mysql.connector
+from flask_mysqldb import MySQL
 from mysql.connector import Error
 from datetime import date, timedelta
 from forms import *
@@ -7,13 +9,20 @@ from forms import *
 app = Flask(__name__)
 app.permanent_session_lifetime = timedelta(minutes=5)
 
-mydb = mysql.connector.connect(
-    host='locathost',
-    user='root',
-    password='somepassword'
-)
+# Config the Setting
+app.config['MYSQL_HOST'] = 'localhost',
+app.confg['MYSQL_USER'] = 'root',
+app.config['MYSQL_PASSWORD'] = 'somepassword' or 'wenjie',
+app.config['MYSQL_DB'] = 'connectnypian_db'  # Standardised schema name
+app.config['MYSQL_PORT'] = 3306
 
-mycursor = mydb.cursor()
+#Intialize MYSQL
+mysql = MySQL(app)
+
+#Common MYSQL code
+# cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor) # To activate a cursor
+# cursor.execute('SELECT * FROM %s', (table)) # Execute a query
+# account = cursor.fetchone #Fetch one record
 
 
 # EXTERNAL FUNCTIONS
@@ -31,6 +40,7 @@ def createcomment(form):
 
     pass
 
+
 def createlike(post_id):
     if 'id' in session:
         like_date = date.today
@@ -41,43 +51,39 @@ def createlike(post_id):
 
     pass
 
-# END OF EXTERNAL FUNCTIONS
 
+# END OF EXTERNAL FUNCTIONS
 
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
-
     # If there's a POST request(Form submitted) enter statement.
     if request.method == 'POST':
-        #Try:
-            # Retrieve User Credential in the form
+        # Try:
+        # Retrieve User Credential in the form
 
-            # Hash the password
+        # Hash the password
 
-            # DML into MySQLdb
+        # DML into MySQLdb
         pass
 
 
 @app.route('/login', methods=['GET', 'POST'])
 def signup():
-
     # If there's a POST request(Form submitted) enter statement.
     if request.method == 'POST':
-        #Try:
-            # Retrieve User Credential in the form
+        # Try:
+        # Retrieve User Credential in the form
 
-            # Retrieve account from sql (hash pass)
-            # if successful
-                #set session
-
+        # Retrieve account from sql (hash pass)
+        # if successful
+        # set session
 
         pass
 
 
 @app.route('/createpost', methods=['GET', 'POST'])
 def createpost():
-    
     form = createpost(request.form)
     if request.method == 'POST' and form.validate():
         # assign form data to variables
@@ -93,12 +99,8 @@ def createpost():
         mydb.commit()
         print("post added to database, redirecting to homepage")
         return redirect(url_for('index'))
-    
-    
+
     return render_template('/processes/createpost.html', form=form)
-
-
-    
 
 
 if __name__ == '__main__':
