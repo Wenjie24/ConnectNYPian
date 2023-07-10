@@ -104,7 +104,7 @@ def signup():
 
 
 @app.route('/login', methods=['GET', 'POST'])
-def signup():
+def login():
     # If there's a POST request(Form submitted) enter statement.
     if request.method == 'POST':
         # Try:
