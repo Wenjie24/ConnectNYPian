@@ -60,29 +60,33 @@ def execute_fetchall(query): #Get cursor, execute and close
 
 # function for creating a comment, must assign createcomment form to a variable in applicable routes
 def createcomment(form, post_id):
-    if request.method == 'POST':
-        body = form.body.data
-        comment_date = date.today
+    try:
+        if request.method == 'POST':
+            body = form.body.data
+            comment_date = date.today
 
-        sql = "INSERT INTO comments (body, comment_date, account_id, post_id) VALUES (%s, %s, %s, %s)"
-        val = (body, comment_date, session[id], post_id)
-        execute_fetchall(sql, val)
-        connection_commit()
-        
-        print("comment added to database")
+            sql = "INSERT INTO comments (body, comment_date, account_id, post_id) VALUES (%s, %s, %s, %s)"
+            val = (body, comment_date, session['id'], post_id)
+            execute_fetchall(sql, val)
+            connection_commit()
+            
+            print("comment added to database")
 
-    pass
+    except Error as e:
+        print('Error creating comment: ', e)
 
 
 def createlike(post_id):
-    if 'id' in session:
-        like_date = date.today
-        sql = "INSERT INTO like (like_date, post_id, account_id) VALUES (%s, %s, %s)"
-        val = (like_date, post_id, session[id])
-        execute_fetchall(sql, val)
-        connection_commit()
+    try:
+        if 'id' in session:
+            like_date = date.today
+            sql = "INSERT INTO like (like_date, post_id, account_id) VALUES (%s, %s, %s)"
+            val = (like_date, post_id, session['id'])
+            execute_fetchall(sql, val)
+            connection_commit()
 
-    pass
+    except Error as e:
+        print("Error creating like: ", e)
 
 
 # END OF EXTERNAL FUNCTIONS
