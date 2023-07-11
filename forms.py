@@ -8,11 +8,11 @@ class createpost(Form):
 class createcomment(Form):
     body = TextAreaField('', render_kw={'placeholder': 'Add a comment:'})
 
-class signup(Form):
+class signup_form(Form):
     username = StringField('Username', validators=[validators.regexp('^[A-za-z]+$'), validators.DataRequired()]) # Regex to allow only string
     email = StringField('School Email', validators=[validators.DataRequired()])
     password = PasswordField('Password', validators=[validators.DataRequired()])
 
-class login(Form):
+class login_form(Form):
     username = StringField('Username', validators=[validators.regexp('^[A-za-z]+$'), validators.DataRequired()]) # Regex to allow only string
     password = PasswordField('Password', validators=[validators.DataRequired()])

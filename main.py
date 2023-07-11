@@ -10,6 +10,7 @@ from forms import *
 app = Flask(__name__)
 
 # Config the Setting
+app.config['SECRET_KEY'] = 'helpmyasshurt'
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
 app.config['MYSQL_PASSWORD'] = 'wenjie'
@@ -36,20 +37,20 @@ def connection_commit(): #This function commit the query
 def connection_close(): #This function close the connection
     mysql.connection.close()
 
-def execute_commit(query): #Get cursor, execute and return result
+def execute_commit(query, parameterized_query_data=None): #Get cursor, execute and return result
     try:
         cursor = connection_cursor()
-        cursor.execute(query)
+        cursor.execute(query, parameterized_query_data)
         connection_commit()
         cursor_close(cursor)
     except Error as e:
         print("Error Executing query:", e)
         return None
 
-def execute_fetchone(query): #Get cursor, execute and return result
+def execute_fetchone(query, parameterized_query_data=None): #Get cursor, execute and return result
     try:
         cursor = connection_cursor()
-        cursor.execute(query)
+        cursor.execute(query, parameterized_query_data)
         result = cursor.fetchone()
         cursor_close(cursor)
         return result
@@ -57,10 +58,10 @@ def execute_fetchone(query): #Get cursor, execute and return result
         print("Error Executing query:", e)
         return None
 
-def execute_fetchall(query): #Get cursor, execute and return result
+def execute_fetchall(query, parameterized_query_data=None): #Get cursor, execute and return result
     try:
         cursor = connection_cursor()
-        cursor.execute(query)
+        cursor.execute(query, parameterized_query_data)
         result = cursor.fetchall()
         cursor_close(cursor)
         return result
@@ -92,6 +93,13 @@ def check_session(session_key):
     except Error as e:
         print("An unknown error occurred while checking session.\n", e)
 
+def check_login_status():
+    try:
+        login_status = check_session('login_status')
+    except Error as e:
+        print("Unknown error when checking login status session", e)
+    else:
+        return login_status
 
 # End of session function
 
@@ -130,11 +138,18 @@ def createlike(post_id):
 # END OF EXTERNAL FUNCTIONS
 @app.route('/')
 def home():
-    return 'home'
+    # Extract all the post from sql
+    login_status = check_login_status() #Check for login status
 
+    if login_status:
+        print("logged in")
+        return render_template('index.html')
+    else:
+        return redirect(url_for('signup'))
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
+    form = signup_form(request.form)
     # If there's a POST request(Form submitted) enter statement.
     if request.method == 'POST':
         # Try:
@@ -150,26 +165,28 @@ def signup():
 
             if hashed_password:
                 # Inserting data into account: account_id, email, username, date_created
-                execute_commit('INSERT INTO accounts VALUES (null, %s, %s, %s, null)',(email, username, hashed_password))
-
+                execute_commit('INSERT INTO students (hashed_pass, school_email, username) VALUES (%s, %s, %s)',(hashed_password, email, username))
+                print("Account created")
 
 
         # DML into MySQLdb
-    return 'sign up page'
+    return render_template('processes/signup.html', form=form)
+
 
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    form=login_form(request.form)
     # If there's a POST request(Form submitted) enter statement.
-    if request.method == 'POST':
-        # Try:
-        # Retrieve User Credential in the form
+    if request.method == 'POST': # If a form is submitted
         try:
+            # Retrieve User Credential in the form
             username = request.form['username']
             password = request.form['password']
-            result = execute_fetchone('SELECT username FROM accounts WHERE username = %s', (username,))
-            hashed_pass = result['password']
-            account_id = result['id']
+            result = execute_fetchone('SELECT * FROM students WHERE username = %s', (username,)) # Getting data from database
+            #Assigning value from the data retrieved
+            hashed_pass = result['hashed_pass']
+            account_id = result['account_id']
             username = result['username']
         except Error as e:
             print("Unknown error occurred while retrieving user credential.\n", e)
@@ -178,17 +195,18 @@ def login():
             # Checking if the there's a result from the sql query and checking the value of both hash function
             if result and bcrypt.check_password_hash(hashed_pass, password):
                 try:
+                    #If login success, try to create session for the user
                     create_session('login_status', True)
                     create_session('login_id', account_id)
                     create_session('username', username)
-                except Error as e:
+                except Error as e: #If login fail
+                    print("Login Fail")
                     print("Unknown error occurred while trying to create session for user.\n", e)
                 else:
-                    redirect(url_for(home))
+                    print("Login success")
+                    return redirect(url_for('home'))
 
-
-
-    return 'Login page'
+    return render_template('processes/login.html', form=form)
 
 
 
