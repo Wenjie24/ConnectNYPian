@@ -7,3 +7,5 @@ venv
 *.xml
 *.xml
 *.xml
+*.xml
+*.iml
