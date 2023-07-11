@@ -1,0 +1,22 @@
+/* Set the size of the div element that contains the map */
+#map {
+  height: 400px;
+  /* The height is 400 pixels */
+  width: 100%;
+  /* The width is the width of the web page */
+}
+.serv {
+  display: flex;
+  flex-wrap: wrap;
+  padding-left: 0;
+}
+
+.serv div {
+    width: 100%;
+  list-style: none;
+  flex: 0 0 33.333333%;
+}
+
+.container {
+  max-width: 960px;
+}
