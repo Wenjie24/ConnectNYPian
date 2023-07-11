@@ -25,9 +25,7 @@
       }
     </style>
 
-    <script>
-      alert("To select interest");
-    </script>
+    <script></script>
   </head>
   <body>
     <header>
@@ -105,24 +103,79 @@
     </header>
 
     <main class="container">
-      <div class="bg-light p-5 rounded">
-        <h1>Title</h1>
-        <p class="lead">
-          Lorem ipsum dolor sit amet consectetur adipisicing elit. Quisquam
-          voluptatum, quibusdam, quia, voluptate voluptas quod quos
-          exercitationem voluptatibus quas voluptatem quidem? Quisquam
-        </p>
-        <div class="row">
-          <div class="col">
-            <button type="button" class="btn btn-outline-primary">Like</button>
+      <!--
+
+        
+        Place the login form in a card format
+        Split the page into left and right
+        Put the login form in the middle of the right side
+
+        1. Login Page
+        - Attributes
+          - [ ] School Email
+          - [ ] Password
+          - [ ] Retype Password (for signup only)
+          - [ ] SCHOOL (FOR SIGN UP ONLY)
+          - [ ] COURSE (FOR SIGN UP ONLY)
+      -->
+
+      <div class="row">
+        <!-- Left Side -->
+        <div class="col-8">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Hello, World!</h5>
+              <p class="card-text">
+                Welcome to CONNECT@NYPian! This is a platform where NYP students
+                can connect with each other in a safe and secure environment.
+                <br />
+                <br />
+                To get started, you can either login or sign up for an account.
+                <br />
+                <br />
+                If you are new, sign up for a new account to get started!
+              </p>
+            </div>
           </div>
-          <div class="col">
-            <button type="button" class="btn btn-outline-primary">
-              Comment
-            </button>
-          </div>
-          <div class="col">
-            <button type="button" class="btn btn-outline-primary">Share</button>
+        </div>
+
+        <!-- Right Side -->
+        <div class="col-4">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">Account Login</h5>
+
+              <form action="/login" method="POST">
+                <div class="mb-3">
+                  <label for="email" class="form-label">Email address</label>
+                  <input
+                    type="email"
+                    class="form-control"
+                    id="email"
+                    name="email"
+                    aria-describedby="emailHelp"
+                    required
+                  />
+                  <div id="emailHelp" class="form-text">
+                    We'll never share your email with anyone else.
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  <label for="password" class="form-label">Password</label>
+                  <input
+                    type="password"
+                    class="form-control"
+                    id="password"
+                    name="password"
+                    required
+                  />
+                </div>
+
+                <button type="submit" class="btn btn-primary">Login</button>
+                <a href="/signup" class="btn btn-secondary">Sign Up</a>
+              </form>
+            </div>
           </div>
         </div>
       </div>
