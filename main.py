@@ -109,13 +109,11 @@ def createcomment(form, post_id):
     try:
         if request.method == 'POST':
             body = form.body.data
-            comment_date = date.today
 
-            sql = "INSERT INTO comments (body, comment_date, account_id, post_id) VALUES (%s, %s, %s, %s)"
-            val = (body, comment_date, session['id'], post_id)
-            execute_fetchall(sql, val)
-            connection_commit()
-            
+            sql = "INSERT INTO comments (body, account_id, post_id) VALUES (%s, %s, %s)"
+            val = (body, session['login_id'], post_id)
+            execute_commit(sql, val)
+
             print("comment added to database")
 
     except Error as e:
@@ -125,11 +123,9 @@ def createcomment(form, post_id):
 def createlike(post_id):
     try:
         if 'id' in session:
-            like_date = date.today
-            sql = "INSERT INTO like (like_date, post_id, account_id) VALUES (%s, %s, %s)"
-            val = (like_date, post_id, session['id'])
-            execute_fetchall(sql, val)
-            connection_commit()
+            sql = "INSERT INTO like (like_date, account_id) VALUES (%s, %s)"
+            val = (post_id, session['login_id'])
+            execute_commit(sql, val)
 
     except Error as e:
         print("Error creating like: ", e)
@@ -219,16 +215,14 @@ def createpost():
         # assign form data to variables
         title = form.title.data
         body = form.body.data
-        date = date.today()
         category = form.category.data
 
         # add form data to database
-        sql = "INSERT INTO posts (title, body, publish_time, category, account_id) VALUES (%s, %s, %s, %s, %s)"
-        val = (title, body, date, category, session['id'])
-        execute_fetchall(sql, val)
-        connection_commit()
+        sql = "INSERT INTO posts (title, body, category, account_id) VALUES (%s, %s, %s, %s)"
+        val = (title, body, category, session['id'])
+        execute_commit(sql, val)
         print("post added to database, redirecting to homepage")
-        return redirect(url_for('index'))
+        return redirect(url_for('home'))
 
     return render_template('/processes/createpost.html', form=form)
 
