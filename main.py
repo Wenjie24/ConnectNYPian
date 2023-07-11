@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 import mysql.connector
 from flask_mysqldb import MySQL
+from flask_bcrypt import Bcrypt
 import MySQLdb.cursors
 from mysql.connector import Error
 from datetime import date, timedelta
@@ -22,6 +23,8 @@ mysql = MySQL(app)
 # mycursor.execute('SELECT * FROM %s', (table)) # Execute a query
 # account = mycursor.fetchone #Fetch one record
 
+
+bcrypt = Bcrypt() #Creating a bcrypt class to use hashing function
 
 # MYSQL CHEAT CODE - Created by ur handsome daddy
 def connection_cursor(): #This function allow you to obtan the cursor
@@ -57,6 +60,31 @@ def execute_fetchall(query): #Get cursor, execute and close
 
 # END OF CHEAT CODE
 
+# Session module
+def create_session(session_key, value):
+    try:
+        session[session_key] = value
+    except Error as e:
+        print("An error occurred while creating session.\n", e)
+
+def remove_session(session_key):
+    try:
+        session.pop(session_key, None)
+    except Error as e:
+        print("An error occurred while popping session.\n", e)
+
+def check_session(session_key):
+    try:
+        if session_key in session:
+            return True
+        else:
+            return False
+    except Error as e:
+        print("An unknown error occurred while checking session.\n", e)
+
+
+# End of session function
+
 
 # function for creating a comment, must assign createcomment form to a variable in applicable routes
 def createcomment(form):
@@ -88,6 +116,9 @@ def createlike(post_id):
 
 
 # END OF EXTERNAL FUNCTIONS
+@app.route('/')
+def home():
+    return 'home'
 
 
 @app.route('/signup', methods=['GET', 'POST'])
@@ -109,12 +140,34 @@ def login():
     if request.method == 'POST':
         # Try:
         # Retrieve User Credential in the form
+        try:
+            username = request.form['username']
+            password = request.form['password']
+            result = execute_fetchone('SELECT username FROM accounts WHERE username = %s', (username,))
+            hashed_pass = result['password']
+            account_id = result['id']
+            username = result['username']
+        except Error as e:
+            print("Unknown error occurred while retrieving user credential.\n", e)
+        else:
+            #If able to retrieve, continue
+            # Checking if the there's a result from the sql query and checking the value of both hash function
+            if result and bcrypt.check_password_hash(hashed_pass, password):
+                try:
+                    create_session('login_status', True)
+                    create_session('login_id', account_id)
+                    create_session('username', username)
+                except Error as e:
+                    print("Unknown error occurred while trying to create session for user.\n", e)
+                else:
+                    redirect(url_for(home))
 
-        # Retrieve account from sql (hash pass)
-        # if successful
-        # set session
 
-        pass
+
+    return 'Login page'
+
+
+
 
 
 @app.route('/createpost', methods=['GET', 'POST'])
