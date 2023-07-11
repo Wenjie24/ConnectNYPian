@@ -36,7 +36,17 @@ def connection_commit(): #This function commit the query
 def connection_close(): #This function close the connection
     mysql.connection.close()
 
-def execute_fetchone(query): #Get cursor, execute and close
+def execute_commit(query): #Get cursor, execute and return result
+    try:
+        cursor = connection_cursor()
+        cursor.execute(query)
+        connection_commit()
+        cursor_close(cursor)
+    except Error as e:
+        print("Error Executing query:", e)
+        return None
+
+def execute_fetchone(query): #Get cursor, execute and return result
     try:
         cursor = connection_cursor()
         cursor.execute(query)
@@ -47,7 +57,7 @@ def execute_fetchone(query): #Get cursor, execute and close
         print("Error Executing query:", e)
         return None
 
-def execute_fetchall(query): #Get cursor, execute and close
+def execute_fetchall(query): #Get cursor, execute and return result
     try:
         cursor = connection_cursor()
         cursor.execute(query)
@@ -127,11 +137,23 @@ def signup():
     if request.method == 'POST':
         # Try:
         # Retrieve User Credential in the form
+        try:
+            username = request.form['username']
+            password = request.form['password']
+            email = request.form['email']
+        except Error as e:
+            print("Error trying to retrieve sign up for credential\n", e)
+        else:
+            hashed_password = bcrypt.generate_password_hash(password) # Hash the password
 
-        # Hash the password
+            if hashed_password:
+                # Inserting data into account: account_id, email, username, date_created
+                execute_commit('INSERT INTO accounts VALUES (null, %s, %s, %s, null)',(email, username, hashed_password))
+
+
 
         # DML into MySQLdb
-        pass
+    return 'sign up page'
 
 
 @app.route('/login', methods=['GET', 'POST'])
