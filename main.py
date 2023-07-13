@@ -211,6 +211,12 @@ def login():
 
     return render_template('processes/login.html', form=form)
 
+@app.route('/logout')
+def logout():
+    remove_session('login_status')
+    remove_session('login_id')
+    remove_session('username')
+    return redirect(url_for('home'))
 
 
 
