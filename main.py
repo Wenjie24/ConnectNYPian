@@ -8,12 +8,13 @@ from datetime import date, timedelta
 from forms import *
 
 app = Flask(__name__)
+app.permanent_session_lifetime = timedelta(minutes=5)
 
 # Config the Setting
 app.config['SECRET_KEY'] = 'helpmyasshurt'
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
-app.config['MYSQL_PASSWORD'] = 'wenjie'
+app.config['MYSQL_PASSWORD'] = 'Hasooni0305!'
 app.config['MYSQL_DB'] = 'connectnypian_db'  # Standardised schema name
 app.config['MYSQL_PORT'] = 3306
 
@@ -145,6 +146,9 @@ def home():
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
+    if 'login_status' in session:
+        return redirect(url_for('home'))
+    
     form = signup_form(request.form)
     # If there's a POST request(Form submitted) enter statement.
     if request.method == 'POST':
@@ -161,9 +165,9 @@ def signup():
 
             if hashed_password:
                 # Inserting data into account: account_id, email, username, date_created
-                execute_commit('INSERT INTO students (hashed_pass, school_email, username) VALUES (%s, %s, %s)',(hashed_password, email, username))
+                execute_commit('INSERT INTO accounts (hashed_pass, school_email, username) VALUES (%s, %s, %s)',(hashed_password, email, username))
                 print("Account created")
-
+                return redirect(url_for('login'))
 
         # DML into MySQLdb
     return render_template('processes/signup.html', form=form)
@@ -172,6 +176,9 @@ def signup():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    if 'login_status' in session:
+        return redirect(url_for('home'))
+    
     form=login_form(request.form)
     # If there's a POST request(Form submitted) enter statement.
     if request.method == 'POST': # If a form is submitted
@@ -179,7 +186,7 @@ def login():
             # Retrieve User Credential in the form
             username = request.form['username']
             password = request.form['password']
-            result = execute_fetchone('SELECT * FROM students WHERE username = %s', (username,)) # Getting data from database
+            result = execute_fetchone('SELECT * FROM accounts WHERE username = %s', (username,)) # Getting data from database
             #Assigning value from the data retrieved
             hashed_pass = result['hashed_pass']
             account_id = result['account_id']
@@ -210,7 +217,7 @@ def login():
 
 @app.route('/createpost', methods=['GET', 'POST'])
 def createpost():
-    form = createpost(request.form)
+    form = create_post(request.form)
     if request.method == 'POST' and form.validate():
         # assign form data to variables
         title = form.title.data
@@ -219,7 +226,7 @@ def createpost():
 
         # add form data to database
         sql = "INSERT INTO posts (title, body, category, account_id) VALUES (%s, %s, %s, %s)"
-        val = (title, body, category, session['id'])
+        val = (title, body, category, session['login_id'])
         execute_commit(sql, val)
         print("post added to database, redirecting to homepage")
         return redirect(url_for('home'))
