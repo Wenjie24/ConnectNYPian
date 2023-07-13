@@ -223,6 +223,9 @@ def logout():
 
 @app.route('/createpost', methods=['GET', 'POST'])
 def createpost():
+    if 'login_status' not in session:
+        return redirect(url_for('login'))
+    
     form = create_post(request.form)
     if request.method == 'POST' and form.validate():
         # assign form data to variables
