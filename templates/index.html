@@ -1,23 +1,18 @@
-
-
-
-
 {% extends 'base.html' %}
 {% block title%}ConnectNYPian{% endblock %}
 
 {% block content %}
 {% from "includes/formHelper.html" import render_field %}
-<main class="container-fluid w-75">
-  <div class="bg-light p-5 rounded">
-    <h1>Title</h1>
+{% for post in feed%}
+<main class="container-fluid w-50">
+  <div class="bg-light p-4 rounded">
+    <h1>{{post.title}}</h1>
     <p class="lead">
-      Lorem ipsum dolor sit amet consectetur adipisicing elit. Quisquam
-      voluptatum, quibusdam, quia, voluptate voluptas quod quos
-      exercitationem voluptatibus quas voluptatem quidem? Quisquam
+      {{post.body}}
     </p>
     <div class="row">
       <div class="col">
-        <button type="button" class="btn btn-outline-primary">Like</button>
+        <button type="button" class="btn btn-outline-primary"><a href="/createlike/{{post.post_id}}">Like</a></button>
       </div>
       <div class="col">
         <button type="button" class="btn btn-outline-primary">
@@ -27,7 +22,14 @@
       <div class="col">
         <button type="button" class="btn btn-outline-primary">Share</button>
       </div>
+      {% if post.account_id == session['login_id'] %}
+      <div class="col">
+        <button type="button" class="btn btn-outline-danger">Delete</button>
+      </div>
+      {% endif %}
     </div>
   </div>
+  <hr>
 </main>
+{% endfor %}
 {% endblock %}

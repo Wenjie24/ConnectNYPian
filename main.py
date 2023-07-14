@@ -14,7 +14,7 @@ app.permanent_session_lifetime = timedelta(minutes=5)
 app.config['SECRET_KEY'] = 'helpmyasshurt'
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
-app.config['MYSQL_PASSWORD'] = 'Hasooni0305!'
+app.config['MYSQL_PASSWORD'] = 'meow'
 app.config['MYSQL_DB'] = 'connectnypian_db'  # Standardised schema name
 app.config['MYSQL_PORT'] = 3306
 
@@ -121,17 +121,6 @@ def createcomment(form, post_id):
         print('Error creating comment: ', e)
 
 
-def createlike(post_id):
-    try:
-        if 'id' in session:
-            sql = "INSERT INTO like (like_date, account_id) VALUES (%s, %s)"
-            val = (post_id, session['login_id'])
-            execute_commit(sql, val)
-
-    except Error as e:
-        print("Error creating like: ", e)
-
-
 # END OF EXTERNAL FUNCTIONS
 @app.route('/')
 def home():
@@ -140,7 +129,10 @@ def home():
 
     if login_status:
         print("logged in")
-        return render_template('index.html')
+        sql = 'SELECT * FROM posts'
+        feed = execute_fetchall(sql)
+        print(feed)
+        return render_template('index.html', feed=feed)
     else:
         return redirect(url_for('signup'))
 
@@ -242,6 +234,17 @@ def createpost():
 
     return render_template('/processes/createpost.html', form=form)
 
+@app.route('/createlike/<post_id>/')
+def createlike(post_id):
+    try:
+        if 'login_id' in session:
+            sql = "INSERT INTO likes (account_id, post_id) VALUES (%s, %s)"
+            val = (session['login_id'], post_id)
+            execute_commit(sql, val)
+        return redirect(url_for('home'))
+
+    except Error as e:
+        print("Error creating like: ", e)
 
 
 if __name__ == '__main__':
