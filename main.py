@@ -131,8 +131,9 @@ def home():
         print("logged in")
         sql = 'SELECT * FROM posts'
         feed = execute_fetchall(sql)
-        print(feed)
-        return render_template('index.html', feed=feed)
+        sql = 'SELECT * FROM likes'
+        likes = execute_fetchall(sql)
+        return render_template('index.html', feed=feed, likes=likes)
     else:
         return redirect(url_for('signup'))
 
@@ -245,6 +246,34 @@ def createlike(post_id):
 
     except Error as e:
         print("Error creating like: ", e)
+
+@app.route('/removelike/<post_id>')
+def removelike(post_id):
+    try:
+        if 'login_id' in session:
+            sql = "DELETE FROM likes WHERE post_id = %s AND account_id = %s"
+            val = (post_id, session['login_id'])
+            execute_commit(sql, val)
+        return redirect(url_for('home'))
+    
+    except Error as e:
+        print("Error removing like: ", e)
+
+@app.route('/deletepost/<post_id>')
+def deletepsot(post_id):
+    try:
+        if 'login_id' in session:
+            sql = 'DELETE FROM comments WHERE post_id = %s'
+            val = (post_id)
+            execute_commit(sql, val)
+            sql = 'DELETE FROM likes WHERE post_id = %s'
+            execute_commit(sql, val)
+            sql = 'DELETE FROM posts WHERE post_id = %s'
+            execute_commit(sql, val)
+        return redirect(url_for('home'))
+
+    except Error as e:
+        print("Error deleting post: ", e)
 
 
 if __name__ == '__main__':

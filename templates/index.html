@@ -3,14 +3,14 @@
 
 {% block content %}
 {% from "includes/formHelper.html" import render_field %}
-{% for post in feed%}
+{% for post in feed %}
 <main class="container-fluid w-50">
   <div class="bg-light p-4 rounded">
     <h1>{{post.title}}</h1>
     <p class="lead">
       {{post.body}}
     </p>
-    <div class="row">
+    <div class="row w-75">
       <div class="col">
         <button type="button" class="btn btn-outline-primary"><a href="/createlike/{{post.post_id}}">Like</a></button>
       </div>
@@ -24,7 +24,7 @@
       </div>
       {% if post.account_id == session['login_id'] %}
       <div class="col">
-        <button type="button" class="btn btn-outline-danger">Delete</button>
+        <button type="button" class="btn btn-danger"><a href="/deletepost/{{post.post_id}}" style="color: white">Delete</a></button>
       </div>
       {% endif %}
     </div>
