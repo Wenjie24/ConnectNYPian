@@ -2,7 +2,12 @@
 {% block title%}Profile{% endblock %}
 {% from "includes/formHelper.html" import render_field %}
 {% block content %}
-<main class="container">
+<script>
+  function onSubmit(token) {
+    document.getElementById("demo-form").submit();
+  }
+</script>
+<main class="container-fluid w-75">
   <!--
 
 
@@ -19,9 +24,9 @@
       - [ ] COURSE (FOR SIGN UP ONLY)
   -->
 
-  <div class="row">
+  <div class="row justify-content-center">
     <!-- Left Side -->
-    <div class="col-8">
+    <div class="col-6">
       <div class="card">
         <div class="card-body">
           <h5 class="card-title">Hello, World!</h5>
@@ -61,6 +66,9 @@
 
             <div class="mb-3">
               {{ render_field(form.password, class="form-control") }}
+            </div>
+            <div class="mb-3">
+              {{ render_field(form.recaptcha, class="form-control") }}
             </div>
             <p class="form-text"><span>Already have an account? <a href="/login">Log In</a></span></p>
             <button type="submit" class="btn btn-primary">Sign Up</button>

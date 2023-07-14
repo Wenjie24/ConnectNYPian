@@ -18,6 +18,9 @@ app.config['MYSQL_PASSWORD'] = 'meow'
 app.config['MYSQL_DB'] = 'connectnypian_db'  # Standardised schema name
 app.config['MYSQL_PORT'] = 3306
 
+app.config['RECAPTCHA_PUBLIC_KEY'] = '6LcQYiMnAAAAAINoYD0Eg4ldAqUnAIFtc1_MUi1Z'
+app.config['RECAPTCHA_SECRET_KEY'] = '6LcQYiMnAAAAAHwTDruv-mj_tpN0r_Ba3jmFpO_J'
+
 #Intialize MYSQL
 mysql = MySQL(app)
 
