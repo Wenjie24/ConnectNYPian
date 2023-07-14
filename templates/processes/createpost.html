@@ -1,0 +1,44 @@
+
+
+{% extends 'base.html' %}
+{% block title%}Create Post{% endblock %}
+
+{% block content %}
+{% from "includes/formHelper.html" import render_field %}
+<main class="container">
+    <div class="bg-light p-5 rounded">
+      <h1>FUCK THIS WEBSITE</h1>
+      <p class="lead">
+        Create Post
+      </p>
+      <div class="row">
+          <div class="col-4">
+              <div class="card">
+                <div class="card-body">
+                  <h5 class="card-title">CREATE POST</h5>
+        
+                  <form action="/createpost" method="POST">
+                      <div class="mb-3">
+          
+                        {{ render_field(form.title, class="form-control") }}
+                        <div id="title" class="form-text">
+                        </div>
+                      </div>
+          
+                      <div class="mb-3">
+                        {{ render_field(form.body, class="form-control") }}
+                      </div>
+          
+                      <div class="mb-3">
+                        {{ render_field(form.category, class="form-control") }}
+                      </div>
+        
+                    <button type="submit" class="btn btn-primary">Login</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+      </div>
+    </div>
+  </main>
+{% endblock %}
