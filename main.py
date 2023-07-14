@@ -14,7 +14,7 @@ app.permanent_session_lifetime = timedelta(minutes=5)
 app.config['SECRET_KEY'] = 'helpmyasshurt'
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
-app.config['MYSQL_PASSWORD'] = 'Hasooni0305!'
+app.config['MYSQL_PASSWORD'] = 'meow'
 app.config['MYSQL_DB'] = 'connectnypian_db'  # Standardised schema name
 app.config['MYSQL_PORT'] = 3306
 
@@ -130,7 +130,7 @@ def home():
         val = str(session['login_id'])
         original_list = execute_fetchall(sql, val)
         liked_posts = [item['post_id'] for item in original_list]
-        print(liked_posts)
+        print('liked posts by user (post_id):', liked_posts)
         return render_template('index.html', feed=feed, liked_posts=liked_posts)
     else:
         return redirect(url_for('signup'))
