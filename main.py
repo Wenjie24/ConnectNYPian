@@ -14,7 +14,7 @@ app.permanent_session_lifetime = timedelta(minutes=5)
 app.config['SECRET_KEY'] = 'helpmyasshurt'
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
-app.config['MYSQL_PASSWORD'] = 'meow'
+app.config['MYSQL_PASSWORD'] = 'Hasooni0305!'
 app.config['MYSQL_DB'] = 'connectnypian_db'  # Standardised schema name
 app.config['MYSQL_PORT'] = 3306
 
@@ -104,21 +104,16 @@ def check_login_status():
 
 # End of session function
 
+def checklike(post_id):
+    sql = 'SELECT * FROM likes WHERE account_id = %s AND post_id = %s'
+    val = (session['login_id'], post_id)
+    result = execute_fetchall(sql, val)
+    if result:
+        return True
+    else:
+        return False
 
-# function for creating a comment, must assign createcomment form to a variable in applicable routes
-def createcomment(form, post_id):
-    try:
-        if request.method == 'POST':
-            body = form.body.data
 
-            sql = "INSERT INTO comments (body, account_id, post_id) VALUES (%s, %s, %s)"
-            val = (body, session['login_id'], post_id)
-            execute_commit(sql, val)
-
-            print("comment added to database")
-
-    except Error as e:
-        print('Error creating comment: ', e)
 
 
 # END OF EXTERNAL FUNCTIONS
@@ -131,9 +126,12 @@ def home():
         print("logged in")
         sql = 'SELECT * FROM posts'
         feed = execute_fetchall(sql)
-        sql = 'SELECT * FROM likes'
-        likes = execute_fetchall(sql)
-        return render_template('index.html', feed=feed, likes=likes)
+        sql = 'SELECT post_id FROM likes WHERE account_id = %s'
+        val = str(session['login_id'])
+        original_list = execute_fetchall(sql, val)
+        liked_posts = [item['post_id'] for item in original_list]
+        print(liked_posts)
+        return render_template('index.html', feed=feed, liked_posts=liked_posts)
     else:
         return redirect(url_for('signup'))
 
@@ -238,7 +236,7 @@ def createpost():
 @app.route('/createlike/<post_id>/')
 def createlike(post_id):
     try:
-        if 'login_id' in session:
+        if 'login_id' in session and checklike(post_id) == False:
             sql = "INSERT INTO likes (account_id, post_id) VALUES (%s, %s)"
             val = (session['login_id'], post_id)
             execute_commit(sql, val)
@@ -274,6 +272,21 @@ def deletepsot(post_id):
 
     except Error as e:
         print("Error deleting post: ", e)
+
+@app.route('/createcomment/<post_id>')
+def createcomment(form, post_id):
+    try:
+        if request.method == 'POST':
+            body = form.body.data
+
+            sql = "INSERT INTO comments (body, account_id, post_id) VALUES (%s, %s, %s)"
+            val = (body, session['login_id'], post_id)
+            execute_commit(sql, val)
+
+            print("comment added to database")
+
+    except Error as e:
+        print('Error creating comment: ', e)
 
 
 if __name__ == '__main__':
