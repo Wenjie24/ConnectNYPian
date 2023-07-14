@@ -113,7 +113,27 @@ def checklike(post_id):
     else:
         return False
 
-
+def checklockedstatus(account_id):
+    sql = 'SELECT locked_status FROM account_status WHERE account_id = %s'
+    val = str(account_id)
+    result = execute_fetchone(sql, val)
+    if result['locked_status'] == 'unlocked':
+        return False
+    elif result['locked_status'] == 'locked':
+        print('account is locked')
+        return True
+    
+    
+def lockaccount(account_id):
+    sql = 'SELECT failed_attempts FROM account_status WHERE account_id = %s'
+    val = str(account_id)
+    result = execute_fetchone(sql, val)
+    print(result)
+    if int(result['failed_attempts']) >= 5:
+        sql = 'UPDATE account_status SET locked_status = %s WHERE account_id = %s'
+        val = ('locked', account_id)
+        execute_commit(sql, val)
+        print('account with account id of:',account_id, 'has been locked')
 
 
 # END OF EXTERNAL FUNCTIONS
@@ -187,18 +207,36 @@ def login():
         else:
             #If able to retrieve, continue
             # Checking if the there's a result from the sql query and checking the value of both hash function
-            if result and bcrypt.check_password_hash(hashed_pass, password):
+            if result and bcrypt.check_password_hash(hashed_pass, password) and checklockedstatus(account_id) == False:
                 try:
                     #If login success, try to create session for the user
                     create_session('login_status', True)
                     create_session('login_id', account_id)
                     create_session('username', username)
+                    sql = 'DELETE FROM account_status WHERE account_id = %s AND failed_attempts < 5'
+                    val = str(session['login_id'])
+                    execute_commit(sql, val)
                 except Error as e: #If login fail
                     print("Login Fail")
                     print("Unknown error occurred while trying to create session for user.\n", e)
                 else:
                     print("Login success")
                     return redirect(url_for('home'))
+            
+            elif result and bcrypt.check_password_hash(hashed_pass, password) == False:
+                print("Wrong password for:", username)
+                sql = 'SELECT * FROM account_status WHERE account_id = %s'
+                val = str(account_id)
+                account_status = execute_fetchone(sql, val)
+                if account_status:
+                    sql = 'UPDATE account_status SET failed_attempts = failed_attempts + 1 WHERE account_id = %s'
+                    execute_commit(sql, val)
+                    lockaccount(account_id)
+                else:
+                    sql = 'INSERT INTO account_status (account_id, failed_attempts) VALUES (%s, 1)'
+                    execute_commit(sql, val)
+                    return redirect(url_for('login'))
+
 
     return render_template('processes/login.html', form=form)
 
