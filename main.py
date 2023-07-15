@@ -306,7 +306,7 @@ def deletepost(post_id):
     try:
         if 'login_id' in session:
             sql = 'DELETE FROM comments WHERE post_id = %s'
-            val = (post_id)
+            val = (post_id, )
             execute_commit(sql, val)
             sql = 'DELETE FROM likes WHERE post_id = %s'
             execute_commit(sql, val)
@@ -325,15 +325,15 @@ def comments(post_id):
 
         if 'login_id' in session:
             sql = 'SELECT * FROM posts INNER JOIN accounts ON posts.account_id = accounts.account_id WHERE posts.post_id = %s'
-            val = str(post_id)
+            val = (str(post_id), )
             post = execute_fetchone(sql, val)
             form = create_comment(request.form)
             sql = 'SELECT post_id FROM likes WHERE account_id = %s'
-            val = str(session['login_id'])
+            val = (str(session['login_id']), )
             original_list = execute_fetchall(sql, val)
             liked_posts = [item['post_id'] for item in original_list]
             sql = 'SELECT * FROM comments INNER JOIN accounts ON comments.account_id = accounts.account_id WHERE comments.post_id = %s'
-            val = str(post_id)
+            val = (str(post_id), )
             comments = execute_fetchall(sql, val)
 
             if request.method == 'POST':
@@ -344,7 +344,7 @@ def comments(post_id):
                 execute_commit(sql, val)
                 print("comment added to database")
                 sql = 'SELECT * FROM comments INNER JOIN accounts ON comments.account_id = accounts.account_id WHERE comments.post_id = %s'
-                val = str(post_id)
+                val = (str(post_id), )
                 comments = execute_fetchall(sql, val)
                 return render_template('/processes/comments.html', post=post, liked_posts=liked_posts, form=form, comments=comments)
     
@@ -352,6 +352,23 @@ def comments(post_id):
 
     except Error as e:
         print('Error creating comment: ', e)
+
+@app.route('/deletecomment/<post_id>/<comment_id>')
+def deletecomment(post_id, comment_id):
+    try:
+        if 'login_id' in session:
+            sql = 'DELETE FROM comments WHERE comment_id = %s'
+            val = (str(comment_id), )
+            execute_commit(sql, val)
+            print('comment deleted')
+            sql = 'SELECT post_id FROM posts WHERE p'
+            return redirect(url_for('comments', post_id=post_id))
+    
+    except Error as e:
+        print('Error deleting comment:', e)
+
+
+
 
 
 if __name__ == '__main__':
