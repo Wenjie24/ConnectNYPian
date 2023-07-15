@@ -150,7 +150,7 @@ def home():
 
     if login_status:
         print("logged in")
-        sql = 'SELECT * FROM posts'
+        sql = 'SELECT * FROM posts INNER JOIN accounts on posts.account_id = accounts.account_id'
         feed = execute_fetchall(sql)
         sql = 'SELECT post_id FROM likes WHERE account_id = %s'
         val = str(session['login_id'])
@@ -320,8 +320,11 @@ def deletepost(post_id):
 @app.route('/comments/<post_id>', methods=['GET', 'POST'])
 def comments(post_id):
     try:
+        if 'login_id' not in session:
+            return redirect(url_for('login'))
+
         if 'login_id' in session:
-            sql = 'SELECT * FROM posts WHERE post_id = %s'
+            sql = 'SELECT * FROM posts INNER JOIN accounts ON posts.account_id = accounts.account_id WHERE posts.post_id = %s'
             val = str(post_id)
             post = execute_fetchone(sql, val)
             form = create_comment(request.form)
@@ -340,6 +343,9 @@ def comments(post_id):
                 val = (body, session['login_id'], post_id)
                 execute_commit(sql, val)
                 print("comment added to database")
+                sql = 'SELECT * FROM comments INNER JOIN accounts ON comments.account_id = accounts.account_id WHERE comments.post_id = %s'
+                val = str(post_id)
+                comments = execute_fetchall(sql, val)
                 return render_template('/processes/comments.html', post=post, liked_posts=liked_posts, form=form, comments=comments)
     
         return render_template('/processes/comments.html', post=post, liked_posts=liked_posts, form=form, comments=comments)

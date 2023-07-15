@@ -6,10 +6,13 @@
 {% for post in feed %}
 <main class="container-fluid w-50">
   <div class="bg-light p-4 rounded">
-    <h1>{{post.title}}</h1>
+    <img src="/static/images/person-circle.svg" alt="avatar" class="rounded-circle img-fluid" style="width: 30px; float: left; margin-right: 10px">
+    <p style="font-size: 20px">{{post.username}}</p>
+    <h3>{{post.title}}</h3>
     <p class="lead">
       {{post.body}}
     </p>
+    <hr>
     <div class="row">
       {% if post.post_id in liked_posts %}
       <div class="col">
