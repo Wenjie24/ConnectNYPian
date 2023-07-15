@@ -14,7 +14,7 @@ app.permanent_session_lifetime = timedelta(minutes=5)
 app.config['SECRET_KEY'] = 'helpmyasshurt'
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
-app.config['MYSQL_PASSWORD'] = 'meow'
+app.config['MYSQL_PASSWORD'] = 'Hasooni0305!'
 app.config['MYSQL_DB'] = 'connectnypian_db'  # Standardised schema name
 app.config['MYSQL_PORT'] = 3306
 
@@ -120,11 +120,14 @@ def checklockedstatus(account_id):
     sql = 'SELECT locked_status FROM account_status WHERE account_id = %s'
     val = str(account_id)
     result = execute_fetchone(sql, val)
-    if result['locked_status'] == 'unlocked':
+    try:
+        if result['locked_status'] == 'unlocked':
+            return False
+        elif result['locked_status'] == 'locked':
+            print('account is locked')
+            return True
+    except TypeError:
         return False
-    elif result['locked_status'] == 'locked':
-        print('account is locked')
-        return True
     
     
 def lockaccount(account_id):
@@ -299,7 +302,7 @@ def removelike(post_id):
         print("Error removing like: ", e)
 
 @app.route('/deletepost/<post_id>')
-def deletepsot(post_id):
+def deletepost(post_id):
     try:
         if 'login_id' in session:
             sql = 'DELETE FROM comments WHERE post_id = %s'
@@ -314,17 +317,32 @@ def deletepsot(post_id):
     except Error as e:
         print("Error deleting post: ", e)
 
-@app.route('/createcomment/<post_id>')
-def createcomment(form, post_id):
+@app.route('/comments/<post_id>', methods=['GET', 'POST'])
+def comments(post_id):
     try:
-        if request.method == 'POST':
-            body = form.body.data
+        if 'login_id' in session:
+            sql = 'SELECT * FROM posts WHERE post_id = %s'
+            val = str(post_id)
+            post = execute_fetchone(sql, val)
+            form = create_comment(request.form)
+            sql = 'SELECT post_id FROM likes WHERE account_id = %s'
+            val = str(session['login_id'])
+            original_list = execute_fetchall(sql, val)
+            liked_posts = [item['post_id'] for item in original_list]
+            sql = 'SELECT * FROM comments INNER JOIN accounts ON comments.account_id = accounts.account_id WHERE comments.post_id = %s'
+            val = str(post_id)
+            comments = execute_fetchall(sql, val)
 
-            sql = "INSERT INTO comments (body, account_id, post_id) VALUES (%s, %s, %s)"
-            val = (body, session['login_id'], post_id)
-            execute_commit(sql, val)
+            if request.method == 'POST':
+                body = form.body.data
 
-            print("comment added to database")
+                sql = "INSERT INTO comments (body, account_id, post_id) VALUES (%s, %s, %s)"
+                val = (body, session['login_id'], post_id)
+                execute_commit(sql, val)
+                print("comment added to database")
+                return render_template('/processes/comments.html', post=post, liked_posts=liked_posts, form=form, comments=comments)
+    
+        return render_template('/processes/comments.html', post=post, liked_posts=liked_posts, form=form, comments=comments)
 
     except Error as e:
         print('Error creating comment: ', e)
