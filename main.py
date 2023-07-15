@@ -14,7 +14,7 @@ app.permanent_session_lifetime = timedelta(minutes=5)
 app.config['SECRET_KEY'] = 'helpmyasshurt'
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
-app.config['MYSQL_PASSWORD'] = 'Hasooni0305!'
+app.config['MYSQL_PASSWORD'] = 'meow'
 app.config['MYSQL_DB'] = 'connectnypian_db'  # Standardised schema name
 app.config['MYSQL_PORT'] = 3306
 
