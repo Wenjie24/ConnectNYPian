@@ -52,6 +52,7 @@
           <h5 class="card-title">Account Sign up</h5>
 
           <form action="/signup" method="POST">
+            {{ form.csrf_token }}
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
             <div class="mb-3">
