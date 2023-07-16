@@ -12,7 +12,8 @@
           <br>
           
           <form action="/createpost" method="POST">
-              
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
               <div class="form-group has-error">
                   {{ render_field(form.title, class="form-control") }}
               </div>
