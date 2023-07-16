@@ -4,46 +4,25 @@
 
 {% block content %}
 {% from "includes/formHelper.html" import render_field %}
+<br>
 <main class="container">
-<div class="row">
-  <!-- Left Side -->
-  <div class="col-8">
-    <div class="card">
-      <div class="card-body">
-        <h5 class="card-title">Hello, World!</h5>
-        <p class="card-text">
-          Welcome to CONNECT@NYPian! This is a platform where NYP students
-          can connect with each other in a safe and secure environment.
-          <br />
-          <br />
-          To get started, you can either login or sign up for an account.
-          <br />
-          <br />
-          If you are new, sign up for a new account to get started!
-        </p>
-      </div>
-    </div>
-  </div>
-
-  <!-- Right Side -->
+<div class="row justify-content-center">
   <div class="col-4">
     <div class="card">
       <div class="card-body">
         <h5 class="card-title">Account Login</h5>
+        <br>
 
         <form action="/login" method="POST">
           <div class="mb-3">
-
             {{ render_field(form.username, class="form-control") }}
-            <div id="emailHelp" class="form-text">
-              We'll never share your email with anyone else.
-            </div>
           </div>
-
+          <br>
           <div class="mb-3">
             {{ render_field(form.password, class="form-control") }}
           </div>
-
+          <p class="form-text"><span>Don't have an account? <a href="/signup">Create One Here</a></span></p>
+          <br>
           <button type="submit" class="btn btn-primary">Login</button>
         </form>
       </div>

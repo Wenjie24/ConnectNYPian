@@ -1,4 +1,5 @@
 from wtforms import Form, StringField, PasswordField, EmailField, DateField, validators, IntegerField, RadioField, TextAreaField, FileField, SelectField
+from flask_wtf import FlaskForm, RecaptchaField
 
 class create_post(Form):
     title = StringField('Caption', [validators.length(min=1, max=50), validators.DataRequired()])
@@ -12,6 +13,7 @@ class signup_form(Form):
     username = StringField('Username', validators=[validators.regexp('^[A-za-z]+$'), validators.DataRequired()]) # Regex to allow only string
     email = StringField('School Email', validators=[validators.DataRequired()])
     password = PasswordField('Password', validators=[validators.DataRequired()])
+    recaptcha = RecaptchaField('', [validators.DataRequired()])
 
 class login_form(Form):
     username = StringField('Username', validators=[validators.regexp('^[A-za-z]+$'), validators.DataRequired()]) # Regex to allow only string

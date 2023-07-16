@@ -1,33 +1,44 @@
-
-
-
-
 {% extends 'base.html' %}
 {% block title%}ConnectNYPian{% endblock %}
 
 {% block content %}
 {% from "includes/formHelper.html" import render_field %}
-<main class="container-fluid w-75">
-  <div class="bg-light p-5 rounded">
-    <h1>Title</h1>
+{% for post in feed %}
+<main class="container-fluid w-50">
+  <div class="bg-light p-4 rounded">
+    <img src="/static/images/person-circle.svg" alt="avatar" class="rounded-circle img-fluid" style="width: 30px; float: left; margin-right: 10px">
+    <p style="font-size: 20px">{{post.username}}</p>
+    <h3>{{post.title}}</h3>
     <p class="lead">
-      Lorem ipsum dolor sit amet consectetur adipisicing elit. Quisquam
-      voluptatum, quibusdam, quia, voluptate voluptas quod quos
-      exercitationem voluptatibus quas voluptatem quidem? Quisquam
+      {{post.body}}
     </p>
+    <hr>
     <div class="row">
+      {% if post.post_id in liked_posts %}
       <div class="col">
-        <button type="button" class="btn btn-outline-primary">Like</button>
+        <button type="button" class="btn btn-outline-primary"><a href="/removelike/{{post.post_id}}">Unlike</a></button>
       </div>
+      {% else %}
       <div class="col">
-        <button type="button" class="btn btn-outline-primary">
-          Comment
+        <button type="button" class="btn btn-outline-primary"><a href="/createlike/{{post.post_id}}">Like</a></button>
+      </div>
+      {%endif%}
+      <div class="col">
+        <button type="button" class="btn btn-outline-primary"><a href="/comments/{{post.post_id}}">Comment</a>
         </button>
       </div>
       <div class="col">
         <button type="button" class="btn btn-outline-primary">Share</button>
       </div>
+      {% if post.account_id == session['login_id'] %}
+      <div class="col">
+        <button type="button" class="btn btn-danger"><a href="/deletepost/{{post.post_id}}" style="color: white">Delete</a></button>
+      </div>
+      {% endif %}
     </div>
   </div>
+<br>
+<br>
 </main>
+{% endfor %}
 {% endblock %}
