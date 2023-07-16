@@ -53,12 +53,25 @@
 
           <form action="/signup" method="POST">
             <div class="mb-3">
-              {{ render_field(form.username, class="form-control") }}
+              {% if username_error %}
+              {{ render_field(form.username, class="form-control", style="border-color: red;") }}
+              <p style="color: red">Username is taken.</p>
+              {% elif username_error == False %}
+              {{ render_field(form.username, class="form-control" , style="border-color: green;")}}
+              {% else %}
+              {{ render_field(form.username, class="form-control")}}
+              {% endif %}
             </div>
 
             <div class="mb-3">
-
+              {% if email_error %}
+              {{ render_field(form.email, class="form-control", style="border-color: red;") }}
+              <p style="color: red">Email is taken.</p>
+              {% elif username_error == False %}
+              {{ render_field(form.email, class="form-control", style="border-color: green;") }}
+              {% else %}
               {{ render_field(form.email, class="form-control") }}
+              {% endif %}
               <div id="emailHelp" class="form-text">
                 <p><span>We'll never share your email with anyone else.</span></p>
               </div>

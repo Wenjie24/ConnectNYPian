@@ -200,7 +200,11 @@ def user(id):
 def signup():
     if check_login_status():
         return redirect(url_for('home'))
-    
+
+    #Declare username/email error for error message
+    username_error = None
+    email_error = None
+
     form = signup_form(request.form)
     # If there's a POST request(Form submitted) enter statement.
     if request.method == 'POST' and form.validate():
@@ -210,21 +214,40 @@ def signup():
         try:
             username = request.form['username']
             password = request.form['password']
+            hashed_password = bcrypt.generate_password_hash(password)  # Hash the password
             email = request.form['email']
+            username_exist = execute_fetchone('SELECT username FROM accounts WHERE username = %s', (username,))
+            email_exist = execute_fetchone('SELECT school_email FROM accounts WHERE school_email = %s', (email,))
         except Error as e:
             print("Error trying to retrieve sign up for credential\n", e)
         else:
-            hashed_password = bcrypt.generate_password_hash(password) # Hash the password
+            if not username_exist and not email_exist: #If username and email is avaliable
+                if hashed_password:
+                    # Inserting data into account: account_id, email, username, date_created
+                    execute_commit('INSERT INTO accounts (hashed_pass, school_email, username) VALUES (%s, %s, %s)',(hashed_password, email, username))
+                    print("Account created")
+                    return redirect(url_for('login'))
+            else:  #If username and email is not avaliable
+                print("Sign up fail")
+                if username_exist: #If only email exist
+                    print("username exist")
+                    username_error= True
+                    email_error = False
+                if email_exist: #If only email exist
+                    print("Email exist")
+                    email_error=True
+                    username_error = False
 
-            if hashed_password:
-                # Inserting data into account: account_id, email, username, date_created
-                execute_commit('INSERT INTO accounts (hashed_pass, school_email, username) VALUES (%s, %s, %s)',(hashed_password, email, username))
-                print("Account created")
-                return redirect(url_for('login'))
+                if username_exist and email_exist: #If both exist
+                    username_error = True
+                    email_error = True
+
+
+
 
         # DML into MySQLdb
 
-    return render_template('processes/signup.html', form=form)
+    return render_template('processes/signup.html', form=form, username_error=username_error, email_error=email_error)
 
 
 
