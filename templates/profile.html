@@ -4,6 +4,11 @@
 
 {% block content %}
 {% from "includes/formHelper.html" import render_field %}
+{% if is_owner %}
+  <p>is owner</p>
+{% else %}
+<p>is not owner</p>
+{% endif %}
 <main class="container">
   <!--
 
@@ -31,27 +36,36 @@
           onclick="editProfile()"
         />
         <div class="card-body">
+
           <p class="card-text">
-            <b>Username:</b> NYPian
+            <b>Username:</b> {{username}}
+          </p>
+
+          <p class="card-text">
+            <b>Email:</b>  {{school_email}}
           </p>
           <p class="card-text">
-            <b>Email:</b>  NYPian@nyp.sg
+            <b>Account ID:</b> {{account_id}}
           </p>
           <p class="card-text">
-            <b>Bio:</b> I am a NYPian
+            <b>Date Created:</b> {{created_timestamp}}
           </p>
           <p class="card-text">
-            <b>Following:</b> 0
+            <b>Bio:</b> !ALTER THE SCHEMA!
           </p>
           <p class="card-text">
-            <b>Follower:</b> 0
+            <b>Following:</b> derive
           </p>
           <p class="card-text">
-            <b>Post:</b> 0
+            <b>Follower:</b> derive
           </p>
           <p class="card-text">
-            <b>Likes:</b> 0
+            <b>Post:</b> derive
           </p>
+          <p class="card-text">
+            <b>Likes:</b> derive
+          </p>
+          {% if is_owner %}
           <div class="d-flex justify-content-between align-items-center">
             <div class="btn-group">
               <a
@@ -61,26 +75,32 @@
               >
             </div>
           </div>
+          {% endif %}
         </div>
       </div>
     </div>
 
     <div class="col-md-8">
+      {% if is_owner %}
       <h3>My Post</h3>
+      {% else %}
+      <h3>{{username}} Post</h3>
+      {% endif %}
       <div class="card mb-4 shadow-sm">
         <div class="card-body">
           <p class="card-text">
-            <b>Post Title:</b> I am a NYPian
+            <b>Post Title:</b> need retrieve post data
           </p>
           <p class="card-text">
-            <b>Post Content:</b> I am a NYPian
+            <b>Post Content:</b> need retrieve post data
           </p>
           <p class="card-text">
-            <b>Post Date:</b> 0
+            <b>Post Date:</b> need retrieve post data
           </p>
           <p class="card-text">
-            <b>Post Likes:</b> 0
+            <b>Post Likes:</b> need retrieve post data
           </p>
+          {% if is_owner %}
           <div class="d-flex justify-content-between align-items-center">
             <div class="btn-group">
               <a
@@ -90,6 +110,7 @@
               >
             </div>
           </div>
+          {% endif %}
         </div>
       </div>
     </div>
