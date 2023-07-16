@@ -20,8 +20,8 @@ app.config['MYSQL_PASSWORD'] = 'wenjie'
 app.config['MYSQL_DB'] = 'connectnypian_db'  # Standardised schema name
 app.config['MYSQL_PORT'] = 3306
 
-app.config['RECAPTCHA_PUBLIC_KEY'] = '6LcQYiMnAAAAAINoYD0Eg4ldAqUnAIFtc1_MUi1Z'
-app.config['RECAPTCHA_SECRET_KEY'] = '6LcQYiMnAAAAAHwTDruv-mj_tpN0r_Ba3jmFpO_J'
+app.config['RECAPTCHA_PUBLIC_KEY'] = '6LfegionAAAAACW8DE2INwUbd3jnroCdrtrYhlYc'
+app.config['RECAPTCHA_PRIVATE_KEY'] = '6LfegionAAAAAAAqNiLqaVAF_S2k0jtjvgXZ-CK1'
 
 #Intialize MYSQL
 mysql = MySQL(app)
@@ -203,7 +203,8 @@ def signup():
     
     form = signup_form(request.form)
     # If there's a POST request(Form submitted) enter statement.
-    if request.method == 'POST':
+    if request.method == 'POST' and form.validate():
+        print("Signing Up")
         # Try:
         # Retrieve User Credential in the form
         try:
@@ -222,6 +223,7 @@ def signup():
                 return redirect(url_for('login'))
 
         # DML into MySQLdb
+
     return render_template('processes/signup.html', form=form)
 
 

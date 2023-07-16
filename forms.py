@@ -13,7 +13,8 @@ class signup_form(Form):
     username = StringField('Username', validators=[validators.regexp('^[A-za-z]+$'), validators.DataRequired()]) # Regex to allow only string
     email = StringField('School Email', validators=[validators.DataRequired()])
     password = PasswordField('Password', validators=[validators.DataRequired()])
-    recaptcha = RecaptchaField('', [validators.DataRequired()])
+    recaptcha = RecaptchaField()
+
 
 class login_form(Form):
     username = StringField('Username', validators=[validators.regexp('^[A-za-z]+$'), validators.DataRequired()]) # Regex to allow only string
