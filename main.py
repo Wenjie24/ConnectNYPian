@@ -24,7 +24,7 @@ app.config['MYSQL_PORT'] = 3306
 
 app.config['RECAPTCHA_PUBLIC_KEY'] = '6LfegionAAAAACW8DE2INwUbd3jnroCdrtrYhlYc'
 app.config['RECAPTCHA_PRIVATE_KEY'] = '6LfegionAAAAAAAqNiLqaVAF_S2k0jtjvgXZ-CK1'
-app.config['TESTING'] = True #To disable captcha
+#app.config['TESTING'] = True #To disable captcha
 
 #Intialize MYSQL
 mysql = MySQL(app)
@@ -126,7 +126,7 @@ def checklike(post_id):
 
 def checklockedstatus(account_id):
     sql = 'SELECT locked_status FROM account_status WHERE account_id = %s'
-    val = str(account_id)
+    val = str(account_id),
     result = execute_fetchone(sql, val)
     try:
         if result['locked_status'] == 'unlocked':
@@ -159,12 +159,13 @@ def home():
         sql = 'SELECT * FROM posts INNER JOIN accounts on posts.account_id = accounts.account_id'
         feed = execute_fetchall(sql)
         sql = 'SELECT post_id FROM likes WHERE account_id = %s'
-        val = str(session['login_id'])
+        val = str(session['login_id']),
         original_list = execute_fetchall(sql, val)
         liked_posts = [item['post_id'] for item in original_list]
         print('liked posts by user (post_id):', liked_posts)
         return render_template('index.html', feed=feed, liked_posts=liked_posts)
     else:
+        print("Redirecting to sign up")
         return redirect(url_for('signup'))
 @app.route('/user/<int:id>')
 def user(id):
@@ -286,7 +287,7 @@ def login():
                     create_session('login_id', account_id)
                     create_session('username', username)
                     sql = 'DELETE FROM account_status WHERE account_id = %s AND failed_attempts < 5'
-                    val = str(session['login_id'])
+                    val = str(session['login_id']),
                     execute_commit(sql, val)
                 except Error as e: #If login fail
                     print("Login Fail")
