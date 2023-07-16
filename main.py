@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, session
+from flask_wtf.csrf import CSRFProtect
 import mysql.connector
 from flask_mysqldb import MySQL
 from flask_bcrypt import Bcrypt
@@ -6,12 +7,13 @@ import MySQLdb.cursors
 from mysql.connector import Error
 from datetime import date, timedelta
 from forms import *
+import os
 
 app = Flask(__name__)
 app.permanent_session_lifetime = timedelta(minutes=10)
 
 # Config the Setting
-app.config['SECRET_KEY'] = 'helpmyasshurt'
+app.config['SECRET_KEY'] = os.urandom(24).hex() #Generate 24 bytes from os and convert to hex
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
 
@@ -20,11 +22,15 @@ app.config['MYSQL_PASSWORD'] = 'wenjie'
 app.config['MYSQL_DB'] = 'connectnypian_db'  # Standardised schema name
 app.config['MYSQL_PORT'] = 3306
 
-app.config['RECAPTCHA_PUBLIC_KEY'] = '6LcQYiMnAAAAAINoYD0Eg4ldAqUnAIFtc1_MUi1Z'
-app.config['RECAPTCHA_SECRET_KEY'] = '6LcQYiMnAAAAAHwTDruv-mj_tpN0r_Ba3jmFpO_J'
+app.config['RECAPTCHA_PUBLIC_KEY'] = '6LfegionAAAAACW8DE2INwUbd3jnroCdrtrYhlYc'
+app.config['RECAPTCHA_PRIVATE_KEY'] = '6LfegionAAAAAAAqNiLqaVAF_S2k0jtjvgXZ-CK1'
+app.config['TESTING'] = True #To disable captcha
 
 #Intialize MYSQL
 mysql = MySQL(app)
+
+#Enable CRSF
+csrf = CSRFProtect(app)
 
 #Common MYSQL code
 # mycursor.execute('SELECT * FROM %s', (table)) # Execute a query
@@ -200,29 +206,54 @@ def user(id):
 def signup():
     if check_login_status():
         return redirect(url_for('home'))
-    
+
+    #Declare username/email error for error message
+    username_error = None
+    email_error = None
+
     form = signup_form(request.form)
     # If there's a POST request(Form submitted) enter statement.
-    if request.method == 'POST':
+    if request.method == 'POST' and form.validate():
+        print("Signing Up")
         # Try:
         # Retrieve User Credential in the form
         try:
             username = request.form['username']
             password = request.form['password']
+            hashed_password = bcrypt.generate_password_hash(password)  # Hash the password
             email = request.form['email']
+            username_exist = execute_fetchone('SELECT username FROM accounts WHERE username = %s', (username,))
+            email_exist = execute_fetchone('SELECT school_email FROM accounts WHERE school_email = %s', (email,))
         except Error as e:
             print("Error trying to retrieve sign up for credential\n", e)
         else:
-            hashed_password = bcrypt.generate_password_hash(password) # Hash the password
+            if not username_exist and not email_exist: #If username and email is avaliable
+                if hashed_password:
+                    # Inserting data into account: account_id, email, username, date_created
+                    execute_commit('INSERT INTO accounts (hashed_pass, school_email, username) VALUES (%s, %s, %s)',(hashed_password, email, username))
+                    print("Account created")
+                    return redirect(url_for('login'))
+            else:  #If username and email is not avaliable
+                print("Sign up fail")
+                if username_exist: #If only email exist
+                    print("username exist")
+                    username_error= True
+                    email_error = False
+                if email_exist: #If only email exist
+                    print("Email exist")
+                    email_error=True
+                    username_error = False
 
-            if hashed_password:
-                # Inserting data into account: account_id, email, username, date_created
-                execute_commit('INSERT INTO accounts (hashed_pass, school_email, username) VALUES (%s, %s, %s)',(hashed_password, email, username))
-                print("Account created")
-                return redirect(url_for('login'))
+                if username_exist and email_exist: #If both exist
+                    username_error = True
+                    email_error = True
+
+
+
 
         # DML into MySQLdb
-    return render_template('processes/signup.html', form=form)
+
+    return render_template('processes/signup.html', form=form, username_error=username_error, email_error=email_error)
 
 
 

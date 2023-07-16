@@ -24,10 +24,10 @@
                     <a class="nav-link" style="margin-right: 20px; margin-left: 20px"
                         href="/createpost">Create Post</a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link" style="margin-right: 20px; margin-left: 20px" href="/user/{{session['login_id']}}">Profile</a>
-                </li>
-                {% elif 'login_id' not in session %}
+
+                {% endif %}
+                {% if 'login_id' not in session %}
+
                 <li class="nav-item">
                     <a class="nav-link" style="margin-right: 20px; margin-left: 20px" aria-current="page"
                         href="/login">Login</a>
@@ -36,6 +36,13 @@
                     <a class="nav-link" style="margin-right: 20px; margin-left: 20px" aria-current="page"
                         href="/signup">Sign up</a>
                 </li>
+
+                {% endif %}
+                {% if 'login_id' in session %}
+                <li class="nav-item">
+                    <a class="nav-link" style="margin-right: 20px; margin-left: 20px" href="/user/{{session['login_id']}}">My Profile</a>
+                </li>
+
                 {% endif %}
             </ul>
         </div>
