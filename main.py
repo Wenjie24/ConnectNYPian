@@ -8,7 +8,7 @@ from datetime import date, timedelta
 from forms import *
 
 app = Flask(__name__)
-app.permanent_session_lifetime = timedelta(minutes=1)
+app.permanent_session_lifetime = timedelta(minutes=10)
 
 # Config the Setting
 app.config['SECRET_KEY'] = 'helpmyasshurt'
@@ -409,14 +409,13 @@ def deletecomment(post_id, comment_id):
                 print('Error executing sql:', e)
             else:
                 if session['login_id'] == account_id['account_id']:
-            sql = 'DELETE FROM comments WHERE comment_id = %s'
-            sql = 'DELETE FROM comments WHERE comment_id = %s'
-            val = (str(comment_id), )
                     sql = 'DELETE FROM comments WHERE comment_id = %s'
-            val = (str(comment_id), )
+                    sql = 'DELETE FROM comments WHERE comment_id = %s'
+                    val = (str(comment_id), )
+                    sql = 'DELETE FROM comments WHERE comment_id = %s'
+                    val = (str(comment_id), )
                     execute_commit(sql, val)
                     print('comment deleted')
-                    sql = 'SELECT post_id FROM posts WHERE p'
             return redirect(url_for('comments', post_id=post_id))
     
     except Error as e:

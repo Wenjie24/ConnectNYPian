@@ -4,11 +4,6 @@
 
 {% block content %}
 {% from "includes/formHelper.html" import render_field %}
-{% if is_owner %}
-  <p>is owner</p>
-{% else %}
-<p>is not owner</p>
-{% endif %}
 <main class="container">
   <!--
 
@@ -25,17 +20,18 @@
         - [ ] Likes Count (People Like him)
   -->
 
-  <div class="row">
+  <div class="row justify-content-center">
     <div class="col-md-4">
       <div class="card mb-4 shadow-sm">
         <img
-          src="https://t3.ftcdn.net/jpg/03/46/83/96/360_F_346839683_6nAPzbhpSkIpb8pmAwufkC7c5eD7wYws.jpg"
+          src="/static/images/person-circle.svg"
           alt="Profile Picture"
           width="100%"
           height="225"
           onclick="editProfile()"
+          style="margin-top: 30px; margin-bottom: 30px"
         />
-        <div class="card-body">
+        <div class="card-body" style="margin-left: 30px;">
 
           <p class="card-text">
             <b>Username:</b> {{username}}
@@ -80,11 +76,11 @@
       </div>
     </div>
 
-    <div class="col-md-8">
+    <div class="col-md-6">
       {% if is_owner %}
-      <h3>My Post</h3>
+      <h3>My Posts</h3>
       {% else %}
-      <h3>{{username}} Post</h3>
+      <h3>{{username}}'s Posts</h3>
       {% endif %}
       <div class="card mb-4 shadow-sm">
         <div class="card-body">
