@@ -50,7 +50,7 @@
                 <h2>Comment</h2>
 
                 <form action="/comments/{{post.post_id}}" method="POST">
-
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <div class="form-group has-error">
                         {{ render_field(form.body, class="form-control") }}
                     </div>
