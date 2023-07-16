@@ -299,7 +299,7 @@ def login():
             elif result and bcrypt.check_password_hash(hashed_pass, password) == False:
                 print("Wrong password for:", username)
                 sql = 'SELECT * FROM account_status WHERE account_id = %s'
-                val = str(account_id)
+                val = str(account_id),
                 account_status = execute_fetchone(sql, val)
                 if account_status:
                     sql = 'UPDATE account_status SET failed_attempts = failed_attempts + 1 WHERE account_id = %s'
