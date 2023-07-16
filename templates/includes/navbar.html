@@ -10,6 +10,7 @@
 
         <div class="collapse navbar-collapse" id="navbarsExample08">
             <ul class="navbar-nav">
+                {% if 'login_id' in session %}
                 <li class="nav-item">
                     <a class="nav-link" style="margin-right: 20px; margin-left: 20px" aria-current="page"
                         href="/">Feed</a>
@@ -18,11 +19,12 @@
                     <a class="nav-link" style="margin-right: 20px; margin-left: 20px" href="/chat"
                         style="color: white"><i class="fa-solid far fa-comment"></i>Chat</a>
                 </li>
+
                 <li class="nav-item">
                     <a class="nav-link" style="margin-right: 20px; margin-left: 20px"
                         href="/createpost">Create Post</a>
                 </li>
-                {% if 'login_id' not in session %}
+                {% elif 'login_id' not in session %}
                 <li class="nav-item">
                     <a class="nav-link" style="margin-right: 20px; margin-left: 20px" aria-current="page"
                         href="/login">Login</a>
