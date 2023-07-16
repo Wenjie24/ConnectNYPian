@@ -251,6 +251,12 @@ def login():
         return redirect(url_for('home'))
     
     form=login_form(request.form)
+
+    # Setting error message
+    not_logged_in = False
+    account_locked = False
+    invalid_pass_or_username = False
+
     # If there's a POST request(Form submitted) enter statement.
     if request.method == 'POST' and form.validate(): # If a form is submitted
         try:
@@ -258,59 +264,72 @@ def login():
             username = request.form['username']
             password = request.form['password']
             result = execute_fetchone('SELECT * FROM accounts WHERE username = %s', (username,)) # Getting data from database
-            #Assigning value from the data retrieved
-            hashed_pass = result['hashed_pass']
-            account_id = result['account_id']
-            username = result['username']
         except Error as e:
             print("Unknown error occurred while retrieving user credential.\n", e)
         else:
-            #If able to retrieve, continue
-            # Checking if the there's a result from the sql query and checking the value of both hash function
-            if result and bcrypt.check_password_hash(hashed_pass, password) and checklockedstatus(account_id) == False:
-                try:
-                    #If login success, try to create session for the user
-                    create_session('login_status', True)
-                    create_session('login_id', account_id)
-                    create_session('username', username)
+            # If there's result from retrieving
+            if result:
+                print("Retrieving data")
+                # Assigning value from the data retrieved
+                hashed_pass = result['hashed_pass']
+                account_id = result['account_id']
+                username = result['username']
+                #If able to retrieve, continue
+                # Checking if the there's a result from the sql query and checking the value of both hash function
+                if bcrypt.check_password_hash(hashed_pass, password):
+                    if checklockedstatus(account_id) == False:
+                        try:
+                            #If login success, try to create session for the user
+                            create_session('login_status', True)
+                            create_session('login_id', account_id)
+                            create_session('username', username)
 
-                    #Reset account status
-                    sql = 'DELETE FROM account_status WHERE account_id = %s AND failed_attempts < 5'
-                    val = session['login_id'],
-                    execute_commit(sql, val)
+                            #Reset account status
+                            sql = 'DELETE FROM account_status WHERE account_id = %s AND failed_attempts < 5'
+                            val = session['login_id'],
+                            execute_commit(sql, val)
 
-                except Error as e: #If login fail
-                    print("Login Fail")
-                    print("Unknown error occurred while trying to create session for user.\n", e)
-                else:
-                    print("Login success")
-                    return redirect(url_for('home'))
-            
-            elif result and bcrypt.check_password_hash(hashed_pass, password) == False:
-                print("Wrong password for:", username)
-                sql = 'SELECT * FROM account_status WHERE account_id = %s'
+                        except Error as e: #If login fail
+                            print("Login Fail")
+                            print("Unknown error occurred while trying to create session for user.\n", e)
+                        else:
+                            print("Login success")
+                            return redirect(url_for('home'))
+                    else:
+                        #even if correct pass, but locked
+                        account_locked = True
 
-                val = account_id,
+                elif bcrypt.check_password_hash(hashed_pass, password) == False:
+                    print("Wrong password for:", username)
+                    sql = 'SELECT * FROM account_status WHERE account_id = %s'
 
-                account_status = execute_fetchone(sql, val)
-                if account_status:
-                    sql = 'UPDATE account_status SET failed_attempts = failed_attempts + 1 WHERE account_id = %s'
-                    execute_commit(sql, val)
+                    val = account_id,
 
-                    failed_account = execute_fetchone('SELECT failed_attempts FROM account_status WHERE account_id = %s', (account_id,))
-                    print(failed_account)
-                    if int(failed_account['failed_attempts']) >= 5:
-                        sql = 'UPDATE account_status SET locked_status = %s WHERE account_id = %s'
-                        val = ('locked', account_id)
+                    account_status = execute_fetchone(sql, val)
+                    if account_status:
+                        sql = 'UPDATE account_status SET failed_attempts = failed_attempts + 1 WHERE account_id = %s'
                         execute_commit(sql, val)
-                        print('account with account id of:', account_id, 'has been locked')
-                else:
-                    sql = 'INSERT INTO account_status (account_id, failed_attempts) VALUES (%s, 1)'
-                    execute_commit(sql, val)
-                    return redirect(url_for('login'))
+
+                        failed_account = execute_fetchone('SELECT failed_attempts FROM account_status WHERE account_id = %s', (account_id,))
+                        print(failed_account)
+                        if int(failed_account['failed_attempts']) >= 5:
+                            sql = 'UPDATE account_status SET locked_status = %s WHERE account_id = %s'
+                            val = ('locked', account_id)
+                            execute_commit(sql, val)
+                            print('account with account id of:', account_id, 'has been locked')
+                            # account locked
+                            account_locked = True
+                    else:
+                        sql = 'INSERT INTO account_status (account_id, failed_attempts) VALUES (%s, 1)'
+                        execute_commit(sql, val)
 
 
-    return render_template('processes/login.html', form=form)
+            # if no result
+            invalid_pass_or_username = True
+
+
+
+    return render_template('processes/login.html', form=form, account_locked=account_locked, invalid_pass_or_username=invalid_pass_or_username)
 
 @app.route('/logout')
 def logout():
