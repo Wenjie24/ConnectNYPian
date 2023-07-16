@@ -53,6 +53,7 @@
 
           <form action="/signup" method="POST">
             <div class="mb-3">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
               {% if username_error %}
               {{ render_field(form.username, class="form-control", style="border-color: red;") }}
               <p style="color: red">Username is taken.</p>

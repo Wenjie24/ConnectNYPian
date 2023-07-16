@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, session
+from flask_wtf.csrf import CSRFProtect
 import mysql.connector
 from flask_mysqldb import MySQL
 from flask_bcrypt import Bcrypt
@@ -6,12 +7,13 @@ import MySQLdb.cursors
 from mysql.connector import Error
 from datetime import date, timedelta
 from forms import *
+import os
 
 app = Flask(__name__)
 app.permanent_session_lifetime = timedelta(minutes=1)
 
 # Config the Setting
-app.config['SECRET_KEY'] = 'helpmyasshurt'
+app.config['SECRET_KEY'] = os.urandom(24).hex() #Generate 24 bytes from os and convert to hex
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
 
@@ -26,6 +28,9 @@ app.config['TESTING'] = True #To disable captcha
 
 #Intialize MYSQL
 mysql = MySQL(app)
+
+#Enable CRSF
+csrf = CSRFProtect(app)
 
 #Common MYSQL code
 # mycursor.execute('SELECT * FROM %s', (table)) # Execute a query
