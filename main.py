@@ -22,6 +22,7 @@ app.config['MYSQL_PORT'] = 3306
 
 app.config['RECAPTCHA_PUBLIC_KEY'] = '6LfegionAAAAACW8DE2INwUbd3jnroCdrtrYhlYc'
 app.config['RECAPTCHA_PRIVATE_KEY'] = '6LfegionAAAAAAAqNiLqaVAF_S2k0jtjvgXZ-CK1'
+app.config['TESTING'] = True #To disable captcha
 
 #Intialize MYSQL
 mysql = MySQL(app)
