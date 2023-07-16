@@ -10,7 +10,7 @@ from forms import *
 import os
 
 app = Flask(__name__)
-app.permanent_session_lifetime = timedelta(minutes=1)
+app.permanent_session_lifetime = timedelta(minutes=10)
 
 # Config the Setting
 app.config['SECRET_KEY'] = os.urandom(24).hex() #Generate 24 bytes from os and convert to hex
@@ -371,13 +371,22 @@ def removelike(post_id):
 def deletepost(post_id):
     try:
         if 'login_id' in session:
-            sql = 'DELETE FROM comments WHERE post_id = %s'
-            val = (post_id, )
-            execute_commit(sql, val)
-            sql = 'DELETE FROM likes WHERE post_id = %s'
-            execute_commit(sql, val)
-            sql = 'DELETE FROM posts WHERE post_id = %s'
-            execute_commit(sql, val)
+            try:
+                sql = 'SELECT account_id FROM posts WHERE post_id = %s'
+                val = (post_id, )
+                account_id = execute_fetchone(sql, val)
+                print(account_id)
+            except Error as e:
+                print('Error executing sql:', e)
+            else:
+                if session['login_id'] == account_id['account_id']:
+                    sql = 'DELETE FROM comments WHERE post_id = %s'
+                    val = (post_id, )
+                    execute_commit(sql, val)
+                    sql = 'DELETE FROM likes WHERE post_id = %s'
+                    execute_commit(sql, val)
+                    sql = 'DELETE FROM posts WHERE post_id = %s'
+                    execute_commit(sql, val)
         return redirect(url_for('home'))
 
     except Error as e:
@@ -423,11 +432,21 @@ def comments(post_id):
 def deletecomment(post_id, comment_id):
     try:
         if 'login_id' in session:
-            sql = 'DELETE FROM comments WHERE comment_id = %s'
-            val = (str(comment_id), )
-            execute_commit(sql, val)
-            print('comment deleted')
-            sql = 'SELECT post_id FROM posts WHERE p'
+            try:
+                sql = 'SELECT account_id FROM comments WHERE comment_id = %s'
+                val = (str(comment_id), )
+                account_id = execute_fetchone(sql, val)
+            except Error as e:
+                print('Error executing sql:', e)
+            else:
+                if session['login_id'] == account_id['account_id']:
+                    sql = 'DELETE FROM comments WHERE comment_id = %s'
+                    sql = 'DELETE FROM comments WHERE comment_id = %s'
+                    val = (str(comment_id), )
+                    sql = 'DELETE FROM comments WHERE comment_id = %s'
+                    val = (str(comment_id), )
+                    execute_commit(sql, val)
+                    print('comment deleted')
             return redirect(url_for('comments', post_id=post_id))
     
     except Error as e:
