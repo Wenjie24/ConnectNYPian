@@ -140,7 +140,7 @@ def checklockedstatus(account_id):
     
 def lockaccount(account_id):
     sql = 'SELECT failed_attempts FROM account_status WHERE account_id = %s'
-    val = str(account_id)
+    val = str(account_id),
     result = execute_fetchone(sql, val)
     print(result)
     if int(result['failed_attempts']) >= 5:
@@ -286,9 +286,12 @@ def login():
                     create_session('login_status', True)
                     create_session('login_id', account_id)
                     create_session('username', username)
+
+                    #Reset account status
                     sql = 'DELETE FROM account_status WHERE account_id = %s AND failed_attempts < 5'
                     val = str(session['login_id']),
                     execute_commit(sql, val)
+
                 except Error as e: #If login fail
                     print("Login Fail")
                     print("Unknown error occurred while trying to create session for user.\n", e)
