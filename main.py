@@ -13,7 +13,7 @@ app = Flask(__name__)
 app.permanent_session_lifetime = timedelta(minutes=10)
 
 # Config the Setting
-app.config['SECRET_KEY'] = os.urandom(24).hex() #Generate 24 bytes from os and convert to hex
+app.config['SECRET_KEY'] = 'AAjACNiLqAjtjnW8DEonAAwUbd3jnroCdrtrYhlYc'
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
 
@@ -136,19 +136,6 @@ def checklockedstatus(account_id):
             return True
     except TypeError:
         return False
-    
-    
-def lockaccount(account_id):
-    sql = 'SELECT failed_attempts FROM account_status WHERE account_id = %s'
-    val = str(account_id),
-    result = execute_fetchone(sql, val)
-    print(result)
-    if int(result['failed_attempts']) >= 5:
-        sql = 'UPDATE account_status SET locked_status = %s WHERE account_id = %s'
-        val = ('locked', account_id)
-        execute_commit(sql, val)
-        print('account with account id of:',account_id, 'has been locked')
-
 
 # END OF EXTERNAL FUNCTIONS
 @app.route('/')
@@ -265,7 +252,7 @@ def login():
     
     form=login_form(request.form)
     # If there's a POST request(Form submitted) enter statement.
-    if request.method == 'POST': # If a form is submitted
+    if request.method == 'POST' and form.validate(): # If a form is submitted
         try:
             # Retrieve User Credential in the form
             username = request.form['username']
@@ -289,7 +276,7 @@ def login():
 
                     #Reset account status
                     sql = 'DELETE FROM account_status WHERE account_id = %s AND failed_attempts < 5'
-                    val = str(session['login_id']),
+                    val = session['login_id'],
                     execute_commit(sql, val)
 
                 except Error as e: #If login fail
@@ -302,12 +289,19 @@ def login():
             elif result and bcrypt.check_password_hash(hashed_pass, password) == False:
                 print("Wrong password for:", username)
                 sql = 'SELECT * FROM account_status WHERE account_id = %s'
-                val = str(account_id),
+                val = account_id,
                 account_status = execute_fetchone(sql, val)
                 if account_status:
                     sql = 'UPDATE account_status SET failed_attempts = failed_attempts + 1 WHERE account_id = %s'
                     execute_commit(sql, val)
-                    lockaccount(account_id)
+
+                    failed_account = execute_fetchone('SELECT failed_attempts FROM account_status WHERE account_id = %s', (account_id,))
+                    print(failed_account)
+                    if int(failed_account['failed_attempts']) >= 5:
+                        sql = 'UPDATE account_status SET locked_status = %s WHERE account_id = %s'
+                        val = ('locked', account_id)
+                        execute_commit(sql, val)
+                        print('account with account id of:', account_id, 'has been locked')
                 else:
                     sql = 'INSERT INTO account_status (account_id, failed_attempts) VALUES (%s, 1)'
                     execute_commit(sql, val)
