@@ -8,13 +8,15 @@ from datetime import date, timedelta
 from forms import *
 
 app = Flask(__name__)
-app.permanent_session_lifetime = timedelta(minutes=5)
+app.permanent_session_lifetime = timedelta(minutes=1)
 
 # Config the Setting
 app.config['SECRET_KEY'] = 'helpmyasshurt'
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
-app.config['MYSQL_PASSWORD'] = 'meow'
+
+app.config['MYSQL_PASSWORD'] = 'wenjie'
+
 app.config['MYSQL_DB'] = 'connectnypian_db'  # Standardised schema name
 app.config['MYSQL_PORT'] = 3306
 
@@ -91,7 +93,7 @@ def remove_session(session_key):
 def check_session(session_key):
     try:
         if session_key in session:
-            return True
+            return session[session_key]
         else:
             return False
     except Error as e:
@@ -146,9 +148,7 @@ def lockaccount(account_id):
 @app.route('/')
 def home():
     # Extract all the post from sql
-    login_status = check_login_status() #Check for login status
-
-    if login_status:
+    if check_login_status(): #Check for login
         print("logged in")
         sql = 'SELECT * FROM posts INNER JOIN accounts on posts.account_id = accounts.account_id'
         feed = execute_fetchall(sql)
@@ -160,10 +160,45 @@ def home():
         return render_template('index.html', feed=feed, liked_posts=liked_posts)
     else:
         return redirect(url_for('signup'))
+@app.route('/user/<int:id>')
+def user(id):
+    if check_login_status(): #Check for logn status
+        try:
+            result = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s', (id,)) #Try to retrieve account id
+
+        except Error as e: # if error
+            print("error retrieving account id")
+            #Redirect to error page
+        else: # if able to retrieve
+            if result: #If account id exist
+                try:
+                    account_id = result['account_id']
+                    school_email = result['school_email']
+                    username = result['username']
+                    created_timestamp = result['created_timestamp']
+
+                except Error as e:
+                    print("Error in retrieving data")
+                else:
+                    if check_session('login_id') == account_id: #Check if target account is logged in
+                        print(account_id)
+                        return render_template('profile.html', is_owner=True, account_id=account_id, school_email=school_email, username=username, created_timestamp=created_timestamp)
+                        print("Account id logged in")
+                    else:
+                        print("Account id not logged in")
+                        return render_template('profile.html',  account_id=account_id, school_email=school_email, username=username, created_timestamp=created_timestamp)
+
+            else: #If account id not exist
+                return 'no such account page'
+
+
+    else:
+        return redirect(url_for('signup'))
+
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
-    if 'login_status' in session:
+    if check_login_status():
         return redirect(url_for('home'))
     
     form = signup_form(request.form)
@@ -193,7 +228,7 @@ def signup():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if 'login_status' in session:
+    if check_login_status():
         return redirect(url_for('home'))
     
     form=login_form(request.form)
