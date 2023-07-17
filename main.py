@@ -26,6 +26,8 @@ app.config['RECAPTCHA_PUBLIC_KEY'] = '6LfegionAAAAACW8DE2INwUbd3jnroCdrtrYhlYc'
 app.config['RECAPTCHA_PRIVATE_KEY'] = '6LfegionAAAAAAAqNiLqaVAF_S2k0jtjvgXZ-CK1'
 #app.config['TESTING'] = True #To disable captcha
 
+admin_secret_key = '2d9b0f816ffdb77b8e09a46eaf30a1ec9077435a5073cd791aa397729ade5fc7b9a22888c978111461ab1345055b380d3d7571ce6120c8845a10e9f441cededc'
+
 #Intialize MYSQL
 mysql = MySQL(app)
 
@@ -243,6 +245,10 @@ def signup():
 
     return render_template('processes/signup.html', form=form, username_error=username_error, email_error=email_error)
 
+@app.route('/admin')
+def admin():
+    print("admin!!")
+    return render_template('processes/admin.html')
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -267,6 +273,16 @@ def login():
         except Error as e:
             print("Unknown error occurred while retrieving user credential.\n", e)
         else:
+            #If is logging in as admin
+            if username == 'administrator' and password == admin_secret_key:
+                create_session('login_status', True)
+                create_session('login_id', -1)
+                return redirect(url_for('admin'))
+            
+
+
+
+
             # If there's result from retrieving
             if result:
                 print("Retrieving data")
@@ -476,4 +492,4 @@ def deletecomment(post_id, comment_id):
 
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)
