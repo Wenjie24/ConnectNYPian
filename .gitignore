@@ -10,3 +10,4 @@ venv
 *.xml
 *.iml
 __pycache__/forms.cpython-38.pyc
+*.xml
