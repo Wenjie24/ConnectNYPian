@@ -145,7 +145,7 @@ def home():
     # Extract all the post from sql
     if check_login_status(): #Check for login
         print("logged in")
-        sql = 'SELECT * FROM posts INNER JOIN accounts on posts.account_id = accounts.account_id'
+        sql = 'SELECT * FROM posts INNER JOIN accounts on posts.account_id = accounts.account_id ORDER BY posts.post_timestamp desc'
         feed = execute_fetchall(sql)
         sql = 'SELECT post_id FROM likes WHERE account_id = %s'
         val = str(session['login_id']),
@@ -161,7 +161,7 @@ def user(id):
     if check_login_status(): #Check for logn status
         try:
             result = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s', (id,)) #Try to retrieve account id
-            posts = execute_fetchall('SELECT * FROM posts WHERE account_id = %s', (id, ))
+            posts = execute_fetchall('SELECT * FROM posts WHERE account_id = %s ORDER BY post_timestamp desc', (id, ))
         except Error as e: # if error
             print("error retrieving account id")
             #Redirect to error page
@@ -304,6 +304,12 @@ def login():
                             sql = 'DELETE FROM account_status WHERE account_id = %s AND failed_attempts < 5'
                             val = session['login_id'],
                             execute_commit(sql, val)
+                            
+                            #check if user has done security questions, redirects to page if has not
+                            security_questions = execute_fetchall('SELECT * FROM security_questions WHERE account_id = %s', (str(session['login_id']), ))
+                            print(security_questions)
+                            if security_questions == ():
+                                return redirect(url_for('create_security_questions'))
 
                         except Error as e: #If login fail
                             print("Login Fail")
@@ -442,7 +448,7 @@ def comments(post_id):
             val = (str(session['login_id']), )
             original_list = execute_fetchall(sql, val)
             liked_posts = [item['post_id'] for item in original_list]
-            sql = 'SELECT * FROM comments INNER JOIN accounts ON comments.account_id = accounts.account_id WHERE comments.post_id = %s'
+            sql = 'SELECT * FROM comments INNER JOIN accounts ON comments.account_id = accounts.account_id WHERE comments.post_id = %s ORDER BY comments.comment_timestamp desc'
             val = (str(post_id), )
             comments = execute_fetchall(sql, val)
 
@@ -453,7 +459,7 @@ def comments(post_id):
                 val = (body, session['login_id'], post_id)
                 execute_commit(sql, val)
                 print("comment added to database")
-                sql = 'SELECT * FROM comments INNER JOIN accounts ON comments.account_id = accounts.account_id WHERE comments.post_id = %s'
+                sql = 'SELECT * FROM comments INNER JOIN accounts ON comments.account_id = accounts.account_id WHERE comments.post_id = %s ORDER BY comments.comment_timestamp desc'
                 val = (str(post_id), )
                 comments = execute_fetchall(sql, val)
                 return render_template('/processes/comments.html', post=post, liked_posts=liked_posts, form=form, comments=comments)
@@ -496,11 +502,12 @@ def create_security_questions():
                 qn1 = form.qn1.data
                 qn1_ans = form.qn1_ans.data
                 qn2 = form.qn2.data
-                qn2_ans = form.qn2.data
+                qn2_ans = form.qn2_ans.data
                 sql = 'INSERT INTO security_questions (account_id, qn1, qn1_ans, qn2, qn2_ans) VALUES (%s, %s, %s, %s, %s)'
                 val = (str(session['login_id']), qn1, qn1_ans, qn2, qn2_ans)
                 execute_commit(sql, val)
-            return render_template('/processes/security_questions.hmtl')
+                return redirect(url_for('home'))
+            return render_template('/processes/security_questions.html', form=form)
         else:
             return redirect(url_for('login'))
 

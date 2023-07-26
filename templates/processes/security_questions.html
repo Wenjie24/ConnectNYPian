@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title%}ConnectNYPian{% endblock %}
+
+{% block content %}
+{% from "includes/formHelper.html" import render_field %}
+
+<div class="container">
+    <h2>Set Security Questions</h2>
+    <br><br>
+<form action="/create-security-questions" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    {{ render_field(form.qn1) }}
+    <br>
+    <br>
+    {{ render_field(form.qn1_ans, class='form-control w-50') }}
+    <br><br><br>
+    {{ render_field(form.qn2) }}
+    <br><br>
+    {{ render_field(form.qn2_ans, class='form-control w-50') }}
+    <br><br>
+    <button type="submit" class="btn btn-primary">Submit</button>
+</form>
+
+
+
+
+
+
+
+</div>
+{% endblock %}

@@ -20,7 +20,7 @@ class login_form(Form):
     password = PasswordField('Password', validators=[validators.DataRequired()])
 
 class security_questions(Form):
-    qn1 = SelectField('First Security Question', choices=['What was your primary school?', 'What is your favourite childhood movie?', 'What is your favorite colour?'], validators=[validators.DataRequired()])
-    qn1_ans = StringField('First Security Question Answer', validators=[validators.DataRequired()])
-    qn2 = SelectField('Second Security Question', choices=["What is your mother's maiden name?", "What is your father's first job?", "What is your first job?"], validators=[validators.DataRequired()])
-    qn2_ans = StringField('Second Security Question Answer', validators=[validators.DataRequired()])
+    qn1 = SelectField('First Security Question:', choices=['What was your primary school?', 'What is your favourite childhood movie?', 'What is your favorite colour?'], validators=[validators.DataRequired()])
+    qn1_ans = StringField('Answer', validators=[validators.DataRequired()])
+    qn2 = SelectField('Second Security Question:', choices=["What is your mother's maiden name?", "What is your father's first job?", "What is your first job?"], validators=[validators.DataRequired()])
+    qn2_ans = StringField('Answer', validators=[validators.DataRequired()])

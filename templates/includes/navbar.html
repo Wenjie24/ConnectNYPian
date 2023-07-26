@@ -52,13 +52,23 @@
 
     <form class="d-flex" style="margin-right: 50px">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-        <input class="form-control me-2" type="search" placeholder="Search for: Community/User/Post"
-            aria-label="Search" style="width: 275px;"/>
-        <button class="btn btn-outline-success" type="submit">Search</button>
+        <input class="form-control me-2" type="search" placeholder="Search ConnectNYPian"
+            aria-label="Search" style="width: 275px; border-radius: 27px"/>
     </form>
+
+    <script>
+        $(document).ready(() => {
+            $('.info').on('submit', () => {
+                return false;
+            });
+        });
+        $('.d-flex').keypress((e) => {
+            if (e.which === 13) {
+                $('.info').submit();
+            }
+        })
+    </script>
 </nav>
-<br>
-<br>
 <br>
 <br>
 <br>
