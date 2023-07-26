@@ -6,7 +6,7 @@
 {% for post in feed %}
 <main class="container-fluid w-50">
   <div class="bg-light p-4 rounded">
-    <a href="/user/{{post.account_id}}">
+    <a href="/user/{{post.account_id}}" style="text-decoration: none; color: black">
     <img src="/static/images/person-circle.svg" alt="avatar" class="rounded-circle img-fluid" style="width: 30px; float: left; margin-right: 10px">
     <p style="font-size: 20px">{{post.username}}</p>
       </a>

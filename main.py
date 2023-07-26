@@ -161,7 +161,7 @@ def user(id):
     if check_login_status(): #Check for logn status
         try:
             result = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s', (id,)) #Try to retrieve account id
-
+            posts = execute_fetchall('SELECT * FROM posts WHERE account_id = %s', (id, ))
         except Error as e: # if error
             print("error retrieving account id")
             #Redirect to error page
@@ -178,11 +178,11 @@ def user(id):
                 else:
                     if check_session('login_id') == account_id: #Check if target account is logged in
                         print(account_id)
-                        return render_template('profile.html', is_owner=True, account_id=account_id, school_email=school_email, username=username, created_timestamp=created_timestamp)
+                        return render_template('profile.html', is_owner=True, account_id=account_id, school_email=school_email, username=username, created_timestamp=created_timestamp, posts=posts)
                         print("Account id logged in")
                     else:
                         print("Account id not logged in")
-                        return render_template('profile.html',  account_id=account_id, school_email=school_email, username=username, created_timestamp=created_timestamp)
+                        return render_template('profile.html',  account_id=account_id, school_email=school_email, username=username, created_timestamp=created_timestamp, posts=posts)
 
             else: #If account id not exist
                 return 'no such account page'
@@ -446,7 +446,7 @@ def comments(post_id):
             val = (str(post_id), )
             comments = execute_fetchall(sql, val)
 
-            if request.method == 'POST':
+            if request.method == 'POST' and form.validate():
                 body = form.body.data
 
                 sql = "INSERT INTO comments (body, account_id, post_id) VALUES (%s, %s, %s)"
@@ -487,7 +487,25 @@ def deletecomment(post_id, comment_id):
     except Error as e:
         print('Error deleting comment:', e)
 
+@app.route('/create-security-questions', methods=['GET', 'POST'])
+def create_security_questions():
+    try:
+        if 'login_id' in session:
+            form = security_questions(request.form)
+            if request.method == 'POST' and form.validate():
+                qn1 = form.qn1.data
+                qn1_ans = form.qn1_ans.data
+                qn2 = form.qn2.data
+                qn2_ans = form.qn2.data
+                sql = 'INSERT INTO security_questions (account_id, qn1, qn1_ans, qn2, qn2_ans) VALUES (%s, %s, %s, %s, %s)'
+                val = (str(session['login_id']), qn1, qn1_ans, qn2, qn2_ans)
+                execute_commit(sql, val)
+            return render_template('/processes/security_questions.hmtl')
+        else:
+            return redirect(url_for('login'))
 
+    except Error as e:
+        print("Error creating security qns:", e)
 
 
 

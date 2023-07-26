@@ -36,19 +36,30 @@
           <p class="card-text">
             <b>Username:</b> {{username}}
           </p>
-
+          
+          {% if is_owner %}
           <p class="card-text">
-            <b>Email:</b>  {{school_email}}
+            <b>Email:</b>
+            {{school_email}}
           </p>
+          {% endif %}
+
+          {% if is_owner %}
           <p class="card-text">
             <b>Account ID:</b> {{account_id}}
           </p>
+          {% endif %}
+
+          {% if is_owner %}
           <p class="card-text">
             <b>Date Created:</b> {{created_timestamp}}
           </p>
+          {% endif %}
+
           <p class="card-text">
             <b>Bio:</b> !ALTER THE SCHEMA!
           </p>
+
           <p class="card-text">
             <b>Following:</b> derive
           </p>
@@ -82,19 +93,20 @@
       {% else %}
       <h3>{{username}}'s Posts</h3>
       {% endif %}
-      <div class="card mb-4 shadow-sm">
+      {% for post in posts %}
+      <div class="card mb-4 shadow-sm p-1">
         <div class="card-body">
+          <h4 class="card-text">
+            {{post.title}}
+          </h4>
           <p class="card-text">
-            <b>Post Title:</b> need retrieve post data
+            {{post.body}}
           </p>
           <p class="card-text">
-            <b>Post Content:</b> need retrieve post data
+            <b>Date:</b> {{post.post_timestamp}}
           </p>
           <p class="card-text">
-            <b>Post Date:</b> need retrieve post data
-          </p>
-          <p class="card-text">
-            <b>Post Likes:</b> need retrieve post data
+            <b>Likes:</b> this doesnt exist yet it will soon tho
           </p>
           {% if is_owner %}
           <div class="d-flex justify-content-between align-items-center">
@@ -109,6 +121,7 @@
           {% endif %}
         </div>
       </div>
+      {% endfor %}
     </div>
 </main>
 {% endblock %}
