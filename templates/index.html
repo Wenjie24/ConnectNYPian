@@ -3,10 +3,17 @@
 
 {% block content %}
 {% from "includes/formHelper.html" import render_field %}
-<div class="container-fluid" style="margin-bottom: 50px; max-width: 500px">
-  <h2 style="float: left;">For You</h2>
-  <h2 style="float: right">School-Specific</h2>
+{% if school_specific == True %}
+<div class="container-fluid" style="margin-bottom: 70px; max-width: 500px">
+  <a href="/"><h3 style="float: left; color: black">For You</h3></a>
+  <a href="/school-specific"><h3 style="float: right; text-decoration:underline; color: black">School-Specific</h3></a>
 </div>
+{% else %}
+<div class="container-fluid" style="margin-bottom: 70px; max-width: 500px">
+  <a href="/"><h3 style="float: left; text-decoration:underline; color: black">For You</h3></a>
+  <a href="/school-specific"><h3 style="float: right; color: black">School-Specific</h3></a>
+</div>
+{% endif %}
 <br>
 {% for post in feed %}
 <main class="container-fluid w-75" style="max-width: 700px;">
@@ -29,21 +36,24 @@
       {{post.body}}
     </p>
     <hr>
-    <div class="row justify-content-center">
+    <div class="row">
       <div class="col">
-        <a href="/comments/{{post.post_id}}"><img src="/static/images/comment.png" style="width: 32px"></a>
+        <a href="/comments/{{post.post_id}}" style="text-decoration: none; color: black"><img src="/static/images/comment.png" style="width: 32px; margin-right: 10px">10</a>
       </div>
       {% if post.post_id in liked_posts %}
       <div class="col">
-        <a href="/removelike/{{post.post_id}}"><img src="/static/images/liked.png" style="width: 30px"></a>
+        <a href="/removelike/{{post.post_id}}" style="text-decoration: none; color: red"><img src="/static/images/liked.png" style="width: 30px; margin-right: 10px">30</a>
       </div>
       {% else %}
       <div class="col">
-        <a href="/createlike/{{post.post_id}}"><img src="/static/images/unliked.png" style="width: 30px;"></a>
+        <a href="/createlike/{{post.post_id}}" style="text-decoration: none; color: black"><img src="/static/images/unliked.png" style="width: 30px; margin-right: 10px">30</a>
       </div>
       {%endif%}
       <div class="col">
         <a href=""><img src="/static/images/share.png" style="width: 30px"></a>
+      </div>
+      <div class="col">
+        <a href=""><img src="/static/images/more.png" style="width: 30px"></a>
       </div>
     </div>
   </div>

@@ -156,6 +156,29 @@ def home():
     else:
         print("Redirecting to sign up")
         return redirect(url_for('signup'))
+    
+@app.route('/school-specific')
+def school_home():
+    # Extract all the school-specific post from sql
+    if check_login_status(): #Check for login
+        print("logged in")
+        school_specific = True
+        sql = 'SELECT school FROM students WHERE account_id = %s'
+        val = str(session['login_id']),
+        school = execute_fetchone(sql, val)
+        sql = 'SELECT * FROM posts INNER JOIN accounts on posts.account_id = accounts.account_id INNER JOIN students ON posts.account_id = students.account_id WHERE students.school = %s ORDER BY posts.post_timestamp desc'
+        val = str(school['school']),
+        feed = execute_fetchall(sql, val)
+        sql = 'SELECT post_id FROM likes WHERE account_id = %s'
+        val = str(session['login_id']),
+        original_list = execute_fetchall(sql, val)
+        liked_posts = [item['post_id'] for item in original_list]
+        print('liked posts by user (post_id):', liked_posts)
+        return render_template('index.html', feed=feed, liked_posts=liked_posts, school_specific=school_specific)
+    else:
+        print("Redirecting to sign up")
+        return redirect(url_for('signup'))
+
 @app.route('/user/<int:id>')
 def user(id):
     if check_login_status(): #Check for logn status
@@ -210,6 +233,7 @@ def signup():
         try:
             username = request.form['username']
             password = request.form['password']
+            school = form.school.data
             hashed_password = bcrypt.generate_password_hash(password)  # Hash the password
             email = request.form['email']
             username_exist = execute_fetchone('SELECT username FROM accounts WHERE username = %s', (username,))
@@ -221,6 +245,9 @@ def signup():
                 if hashed_password:
                     # Inserting data into account: account_id, email, username, date_created
                     execute_commit('INSERT INTO accounts (hashed_pass, school_email, username) VALUES (%s, %s, %s)',(hashed_password, email, username))
+                    # Inserting school into sub table
+                    account_id = execute_fetchone('SELECT account_id FROM accounts WHERE username = %s', (username, ))
+                    execute_commit('INSERT INTO students (account_id, school) VALUES (%s, %s)', (account_id['account_id'], school))
                     print("Account created")
                     return redirect(url_for('login'))
             else:  #If username and email is not avaliable
