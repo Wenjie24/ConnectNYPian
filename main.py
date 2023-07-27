@@ -201,11 +201,26 @@ def user(id):
                 else:
                     if check_session('login_id') == account_id: #Check if target account is logged in
                         print(account_id)
-                        return render_template('profile.html', is_owner=True, account_id=account_id, school_email=school_email, username=username, created_timestamp=created_timestamp, posts=posts)
+                        return render_template('profile.html', is_owner=True, account_id=account_id, school_email=school_email, username=username, created_timestamp=created_timestamp, posts=posts, is_following=False)
                         print("Account id logged in")
                     else:
                         print("Account id not logged in")
-                        return render_template('profile.html',  account_id=account_id, school_email=school_email, username=username, created_timestamp=created_timestamp, posts=posts)
+                        # check if following the user
+                        following_list = execute_fetchall('SELECT * FROM follow_account WHERE follower_id = %s', (str(session['login_id']), ))
+                        following_list = [item['followee_id'] for item in following_list]
+                        print(following_list)
+                        if following_list:
+                            for account in following_list:
+                                if int(account) == int(id):
+                                    is_following = True
+                                    print('TRUE')
+                                    break
+                                else:
+                                    is_following = False
+                                    print("FALSE")
+                        else:
+                            is_following = False
+                        return render_template('profile.html',  account_id=account_id, school_email=school_email, username=username, created_timestamp=created_timestamp, posts=posts, is_following=is_following)
 
             else: #If account id not exist
                 return 'no such account page'
@@ -541,6 +556,37 @@ def create_security_questions():
     except Error as e:
         print("Error creating security qns:", e)
 
+@app.route('/follow/<account_id>')
+def follow_account(account_id):
+    try:
+        if 'login_id' in session:
+            sql = 'INSERT INTO follow_account (follower_id, followee_id) VALUES (%s, %s)'
+            val = (str(session['login_id']), account_id)
+            execute_commit(sql, val)
+            is_following = True
+            return redirect(url_for('user', id=account_id, is_following=is_following))
+
+        else:
+            return redirect(url_for('login'))
+
+    except Error as e:
+        print('Error following account:', e)
+
+@app.route('/unfollow/<account_id>')
+def unfollow_account(account_id):
+    try:
+        if 'login_id' in session:
+            sql = 'DELETE FROM follow_account WHERE follower_id = %s and followee_id = %s'
+            val = (str(session['login_id']), account_id)
+            execute_commit(sql, val)
+            is_following = False
+            return redirect(url_for('user', id=account_id, is_following=is_following))
+
+        else:
+            return redirect(url_for('login'))
+
+    except Error as e:
+        print('Error following account:', e)
 
 
 if __name__ == '__main__':

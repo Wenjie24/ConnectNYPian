@@ -4,19 +4,19 @@
 {% block content %}
 {% from "includes/formHelper.html" import render_field %}
 {% if school_specific == True %}
-<div class="container-fluid" style="margin-bottom: 70px; max-width: 500px">
-  <a href="/"><h3 style="float: left; color: black">For You</h3></a>
-  <a href="/school-specific"><h3 style="float: right; text-decoration:underline; color: black">School-Specific</h3></a>
+<div class="container-fluid" style="margin-bottom: 40px; max-width: 75%; width: 600px">
+  <a href="/"><h4 style="float: left; color: black">For You</h4></a>
+  <a href="/school-specific"><h4 style="float: right; text-decoration:underline; color: black">School-Specific</h4></a>
 </div>
 {% else %}
-<div class="container-fluid" style="margin-bottom: 70px; max-width: 500px">
-  <a href="/"><h3 style="float: left; text-decoration:underline; color: black">For You</h3></a>
-  <a href="/school-specific"><h3 style="float: right; color: black">School-Specific</h3></a>
+<div class="container-fluid" style="margin-bottom: 40px; max-width: 75%; width: 600px">
+  <a href="/"><h4 style="float: left; text-decoration:underline; color: black">For You</h4></a>
+  <a href="/school-specific"><h4 style="float: right; color: black">School-Specific</h4></a>
 </div>
 {% endif %}
 <br>
 {% for post in feed %}
-<main class="container-fluid w-75" style="max-width: 700px;">
+<main class="container-fluid" style="max-width: 90%; width: 800px">
   <div class="bg-light p-4 rounded">
     <div class="row">
       <div class="col">
@@ -31,29 +31,29 @@
         </div>
         {% endif %}
       </div>
-    <h3>{{post.title}}</h3>
-    <p class="lead">
+    <h4>{{post.title}}</h4>
+    <p>
       {{post.body}}
     </p>
     <hr>
     <div class="row">
       <div class="col">
-        <a href="/comments/{{post.post_id}}" style="text-decoration: none; color: black"><img src="/static/images/comment.png" style="width: 32px; margin-right: 10px">10</a>
+        <a href="/comments/{{post.post_id}}" style="text-decoration: none; color: black"><img src="/static/images/comment.png" style="width: 27px; margin-right: 10px; margin-bottom: 4px">10</a>
       </div>
       {% if post.post_id in liked_posts %}
       <div class="col">
-        <a href="/removelike/{{post.post_id}}" style="text-decoration: none; color: red"><img src="/static/images/liked.png" style="width: 30px; margin-right: 10px">30</a>
+        <a href="/removelike/{{post.post_id}}" style="text-decoration: none; color: red"><img src="/static/images/liked.png" style="width: 27px; margin-right: 10px; margin-bottom: 4px">30</a>
       </div>
       {% else %}
       <div class="col">
-        <a href="/createlike/{{post.post_id}}" style="text-decoration: none; color: black"><img src="/static/images/unliked.png" style="width: 30px; margin-right: 10px">30</a>
+        <a href="/createlike/{{post.post_id}}" style="text-decoration: none; color: black"><img src="/static/images/unliked.png" style="width: 27px; margin-right: 10px; margin-bottom: 4px">30</a>
       </div>
       {%endif%}
       <div class="col">
-        <a href=""><img src="/static/images/share.png" style="width: 28px"></a>
+        <a href=""><img src="/static/images/share.png" style="width: 24px"></a>
       </div>
       <div class="col">
-        <a href=""><img src="/static/images/more.png" style="width: 25px"></a>
+        <a href=""><img src="/static/images/more.png" style="width: 22px"></a>
       </div>
     </div>
   </div>

@@ -4,7 +4,7 @@
 
 {% block content %}
 {% from "includes/formHelper.html" import render_field %}
-<main class="container">
+<main class="container" style="max-width: 1050px;">
   <!--
 
     3. Profile Page !!PLACEHOLDER!!
@@ -31,8 +31,14 @@
           onclick="editProfile()"
           style="margin-top: 30px; margin-bottom: 30px"
         />
+        {% if not is_owner %}
+        {% if not is_following %}
+        <button class="btn btn-primary" style="width: 100px; border-radius:18px; margin-left:auto; margin-right:auto"><a href="/follow/{{account_id}}" style="color:white; text-decoration:none;">Follow</a></button>
+        {% else %}
+        <button class="btn btn-primary" style="width: 100px; border-radius:18px; margin-left:auto; margin-right:auto"><a href="/unfollow/{{account_id}}" style="color:white; text-decoration:none;">Unfollow</a></button>
+        {% endif %}
+        {% endif %}
         <div class="card-body" style="margin-left: 30px;">
-
           <p class="card-text">
             <b>Username:</b> {{username}}
           </p>

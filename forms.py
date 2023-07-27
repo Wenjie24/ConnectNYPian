@@ -2,9 +2,9 @@ from wtforms import Form, StringField, PasswordField, EmailField, DateField, val
 from flask_wtf import FlaskForm, RecaptchaField
 
 class create_post(Form):
-    title = StringField('Caption', [validators.length(min=1, max=50), validators.DataRequired()])
-    body = TextAreaField('Body', [validators.length(max=5000)])
-    category = SelectField('Category', choices=['placeholder choice', 'another placeholder choice'], validators=[validators.DataRequired()])
+    title = StringField('', [validators.length(min=1, max=50), validators.DataRequired()], render_kw={'placeholder': 'Title:'})
+    body = TextAreaField('', [validators.length(max=5000)], render_kw={'style': 'height:200px', 'placeholder': 'Body:'})
+    category = SelectField('', choices=['placeholder choice', 'another placeholder choice'], validators=[validators.DataRequired()], render_kw={'style':'height:45px'})
 
 class create_comment(Form):
     body = TextAreaField('', render_kw={'placeholder': 'Add a comment:'})
