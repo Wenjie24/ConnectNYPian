@@ -185,6 +185,9 @@ def user(id):
         try:
             result = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s', (id,)) #Try to retrieve account id
             posts = execute_fetchall('SELECT * FROM posts WHERE account_id = %s ORDER BY post_timestamp desc', (id, ))
+            following = execute_fetchall('SELECT count(*) following FROM follow_account WHERE follower_id = %s', (id,))
+            followers = execute_fetchall('SELECT count(*) followers FROM follow_account WHERE followee_id = %s', (id,))
+            post_no = execute_fetchall('SELECT count(*) posts FROM posts WHERE account_id = %s', (id,))
         except Error as e: # if error
             print("error retrieving account id")
             #Redirect to error page
@@ -195,13 +198,25 @@ def user(id):
                     school_email = result['school_email']
                     username = result['username']
                     created_timestamp = result['created_timestamp']
+                    if following:
+                        following = following[0]['following']
+                    else:
+                        following = 0
+                    if followers:
+                        followers = followers[0]['followers']
+                    else:
+                        followers = 0
+                    if post_no:
+                        post_no = post_no[0]['posts']
+                    else: 
+                        post_no = 0
 
                 except Error as e:
                     print("Error in retrieving data")
                 else:
                     if check_session('login_id') == account_id: #Check if target account is logged in
                         print(account_id)
-                        return render_template('profile.html', is_owner=True, account_id=account_id, school_email=school_email, username=username, created_timestamp=created_timestamp, posts=posts, is_following=False)
+                        return render_template('profile.html', is_owner=True, account_id=account_id, school_email=school_email, username=username, created_timestamp=created_timestamp, posts=posts, is_following=False, following=following, followers=followers, post_no=post_no)
                         print("Account id logged in")
                     else:
                         print("Account id not logged in")
@@ -220,7 +235,7 @@ def user(id):
                                     print("FALSE")
                         else:
                             is_following = False
-                        return render_template('profile.html',  account_id=account_id, school_email=school_email, username=username, created_timestamp=created_timestamp, posts=posts, is_following=is_following)
+                        return render_template('profile.html',  account_id=account_id, school_email=school_email, username=username, created_timestamp=created_timestamp, posts=posts, is_following=is_following, following=following, followers=followers, post_no=post_no)
 
             else: #If account id not exist
                 return 'no such account page'

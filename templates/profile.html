@@ -63,20 +63,17 @@
           {% endif %}
 
           <p class="card-text">
-            <b>Bio:</b> !ALTER THE SCHEMA!
+            <b>Bio:</b>
           </p>
 
           <p class="card-text">
-            <b>Following:</b> derive
+            <b>Following:</b> {{following}}
           </p>
           <p class="card-text">
-            <b>Followers:</b> derive
+            <b>Followers:</b> {{followers}}
           </p>
           <p class="card-text">
-            <b>Posts:</b> derive
-          </p>
-          <p class="card-text">
-            <b>Likes:</b> derive
+            <b>Posts:</b> {{post_no}}
           </p>
           {% if is_owner %}
           <div class="d-flex justify-content-between align-items-center">
@@ -114,17 +111,6 @@
           <p class="card-text">
             <b>Likes:</b> this doesnt exist yet it will soon tho
           </p>
-          {% if is_owner %}
-          <div class="d-flex justify-content-between align-items-center">
-            <div class="btn-group">
-              <a
-                href="/editpost"
-                class="btn btn-sm btn-outline-secondary"
-                >Edit Post</a
-              >
-            </div>
-          </div>
-          {% endif %}
         </div>
       </div>
       {% endfor %}

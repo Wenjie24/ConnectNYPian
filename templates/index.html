@@ -4,12 +4,12 @@
 {% block content %}
 {% from "includes/formHelper.html" import render_field %}
 {% if school_specific == True %}
-<div class="container-fluid" style="margin-bottom: 40px; max-width: 75%; width: 600px">
+<div class="container-fluid" style="margin-bottom: 33px; max-width: 75%; width: 600px">
   <a href="/"><h4 style="float: left; color: black">For You</h4></a>
   <a href="/school-specific"><h4 style="float: right; text-decoration:underline; color: black">School-Specific</h4></a>
 </div>
 {% else %}
-<div class="container-fluid" style="margin-bottom: 40px; max-width: 75%; width: 600px">
+<div class="container-fluid" style="margin-bottom: 33px; max-width: 75%; width: 600px">
   <a href="/"><h4 style="float: left; text-decoration:underline; color: black">For You</h4></a>
   <a href="/school-specific"><h4 style="float: right; color: black">School-Specific</h4></a>
 </div>
@@ -36,7 +36,7 @@
       {{post.body}}
     </p>
     <hr>
-    <div class="row">
+    <div class="row w-75">
       <div class="col">
         <a href="/comments/{{post.post_id}}" style="text-decoration: none; color: black"><img src="/static/images/comment.png" style="width: 27px; margin-right: 10px; margin-bottom: 4px">10</a>
       </div>
@@ -50,7 +50,7 @@
       </div>
       {%endif%}
       <div class="col">
-        <a href=""><img src="/static/images/share.png" style="width: 24px"></a>
+        <a href="" style="text-decoration: none; color: black"><img src="/static/images/share.png" style="width: 24px; margin-right: 10px; margin-bottom: 4px">Share</a>
       </div>
       <div class="col">
         <a href=""><img src="/static/images/more.png" style="width: 22px"></a>
