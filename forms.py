@@ -7,7 +7,7 @@ class create_post(Form):
     category = SelectField('', choices=['placeholder choice', 'another placeholder choice'], validators=[validators.DataRequired()], render_kw={'style':'height:45px'})
 
 class create_comment(Form):
-    body = TextAreaField('', render_kw={'placeholder': 'Add a comment:'})
+    body = TextAreaField('', render_kw={'placeholder': 'Comment:'})
 
 class signup_form(Form):
     username = StringField('Username', validators=[validators.regexp('^[A-za-z1-9]+$', message='Username should not contain symbols.'), validators.DataRequired()]) # Regex to allow only string

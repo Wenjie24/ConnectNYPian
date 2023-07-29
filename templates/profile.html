@@ -97,7 +97,8 @@
       <h3>{{username}}'s Posts</h3>
       {% endif %}
       {% for post in posts %}
-      <div class="card mb-4 shadow-sm p-1">
+      <a href="/comments/{{post.post_id}}" style="color: black; text-decoration:none">
+      <div class="card mb-3 shadow-sm">
         <div class="card-body">
           <h4 class="card-text">
             {{post.title}}
@@ -113,6 +114,7 @@
           </p>
         </div>
       </div>
+      </a>
       {% endfor %}
     </div>
 </main>

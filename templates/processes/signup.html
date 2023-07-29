@@ -7,7 +7,7 @@
     document.getElementById("demo-form").submit();
   }
 </script>
-<main class="container-fluid w-75">
+<main class="container" style="max-width: 1300px;">
   <!--
 
 
@@ -49,8 +49,8 @@
     <div class="col-4">
       <div class="card">
         <div class="card-body">
-          <h5 class="card-title">Account Sign up</h5>
-
+          <h4 class="card-title" style="font-weight: bold;">Account Sign up</h4>
+          <br>
           <form action="/signup" method="POST">
             {{ form.csrf_token }}
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
@@ -76,7 +76,7 @@
               {{ render_field(form.email, class="form-control") }}
               {% endif %}
               <div id="emailHelp" class="form-text">
-                <p><span>We'll never share your email with anyone else.</span></p>
+                <p><span style="font-size: 14px;">We'll never share your email with anyone else.</span></p>
               </div>
             </div>
             
@@ -90,8 +90,8 @@
             <div class="mb-3">
               {{ render_field(form.recaptcha, class="form-control") }}
             </div>
-            <p class="form-text"><span>Already have an account? <a href="/login">Log In</a></span></p>
-            <button type="submit" class="btn btn-primary">Sign Up</button>
+            <p style="font-size: 14px;">Already have an account? <a href="/login" style="font-size:14px">Log In</a></p>
+            <button type="submit" class="btn btn-primary form-control">Sign Up</button>
 
           </form>
         </div>

@@ -5,12 +5,12 @@
 {% block content %}
 {% from "includes/formHelper.html" import render_field %}
 <br>
-<main class="container">
+<main class="container" style="margin-top: 50px;">
 <div class="row justify-content-center">
   <div class="col-4">
     <div class="card">
       <div class="card-body">
-        <h5 class="card-title">Account Login</h5>
+        <h4 class="card-title" style="font-weight: bold;">Account Login</h4>
         <br>
 
         <form action="/login" method="POST">
@@ -19,7 +19,6 @@
           <div class="mb-3">
             {{ render_field(form.username, class="form-control") }}
           </div>
-          <br>
           <div class="mb-3">
             {{ render_field(form.password, class="form-control") }}
           </div>
@@ -35,9 +34,9 @@
           </div>
           {% endif %}
 
-          <p class="form-text"><span>Don't have an account? <a href="/signup">Create One Here</a></span></p>
+          <p class="form-text"><span style="font-size: 14px;">Don't have an account? <a href="/signup" style="font-size: 14px;">Sign up</a></span></p>
           <br>
-          <button type="submit" class="btn btn-primary">Login</button>
+          <button type="submit" class="btn btn-primary form-control">Login</button>
         </form>
       </div>
     </div>
