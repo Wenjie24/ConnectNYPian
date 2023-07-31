@@ -90,6 +90,11 @@
             <div class="mb-3">
               {{ render_field(form.recaptcha, class="form-control") }}
             </div>
+
+            {% if signup_status %}
+            <p style="color: green; ">{{signup_status}}</p>
+            {% endif %}
+
             <p style="font-size: 14px;">Already have an account? <a href="/login" style="font-size:14px">Log In</a></p>
             <button type="submit" class="btn btn-primary form-control">Sign Up</button>
 

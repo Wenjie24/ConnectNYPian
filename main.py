@@ -7,6 +7,9 @@ import MySQLdb.cursors
 from mysql.connector import Error
 from datetime import date, timedelta
 from forms import *
+from flask_mail import Mail, Message
+from itsdangerous import URLSafeTimedSerializer, SignatureExpired
+import pyotp
 import os
 
 app = Flask(__name__)
@@ -33,6 +36,19 @@ mysql = MySQL(app)
 
 #Enable CRSF
 csrf = CSRFProtect(app)
+
+#Enable 2FA
+serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
+
+#Enable mail
+mail = Mail(app)
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 465
+app.config['MAIL_USERNAME'] = 'ConnectNYPian@gmail.com'
+app.config['MAIL_PASSWORD'] = '!ConnectNYPian123!'
+app.config['MAIL_USE_TLS'] = False
+app.config['MAIL_USE_SSL'] = True
+
 
 #Common MYSQL code
 # mycursor.execute('SELECT * FROM %s', (table)) # Execute a query
@@ -245,14 +261,48 @@ def user(id):
         return redirect(url_for('signup'))
 
 
+
+@app.route('/confirm_email/<token>')
+def confirm_email(token):
+    try:
+        email = serializer.loads(token, salt='sign_up', max_age = 30)
+    except SignatureExpired:
+        return 'Signature Expired'
+    else:
+
+        if check_session('temp_sign_up_dict'):
+            try:
+                dict_value = check_session('temp_sign_up_dict')
+                hashed_password = dict_value['hashed_password']
+                email = dict_value['email']
+                username = dict_value['username']
+                school = dict_value['school']
+
+            except Exception:
+                return 'Unknown Error Has Occured'
+            else:
+                 # Inserting data into account: account_id, email, username, date_created
+                execute_commit('INSERT INTO accounts (hashed_pass, school_email, username) VALUES (%s, %s, %s)',(hashed_password, email, username))
+                # Inserting school into sub table
+                account_id = execute_fetchone('SELECT account_id FROM accounts WHERE username = %s', (username, ))
+                execute_commit('INSERT INTO students (account_id, school) VALUES (%s, %s)', (account_id['account_id'], school))
+                print("Account created")
+                return redirect(url_for('login'))
+
+
+
+
+
+
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if check_login_status():
         return redirect(url_for('home'))
 
-    #Declare username/email error for error message
+    #Declare username/email error/signup_status for error message
     username_error = None
     email_error = None
+    signup_status = None
 
     form = signup_form(request.form)
     # If there's a POST request(Form submitted) enter statement.
@@ -271,15 +321,31 @@ def signup():
         except Error as e:
             print("Error trying to retrieve sign up for credential\n", e)
         else:
-            if not username_exist and not email_exist: #If username and email is avaliable
-                if hashed_password:
-                    # Inserting data into account: account_id, email, username, date_created
-                    execute_commit('INSERT INTO accounts (hashed_pass, school_email, username) VALUES (%s, %s, %s)',(hashed_password, email, username))
-                    # Inserting school into sub table
-                    account_id = execute_fetchone('SELECT account_id FROM accounts WHERE username = %s', (username, ))
-                    execute_commit('INSERT INTO students (account_id, school) VALUES (%s, %s)', (account_id['account_id'], school))
-                    print("Account created")
-                    return redirect(url_for('login'))
+            if not username_exist and not email_exist: # If username and email is avaliable
+                if hashed_password:# If password is hashed and ready to use
+                    # Try 2FA to confirm email exist
+
+                    #Generate a url serializer
+                    token = serializer.dumps(email, salt='sign_up')
+                    print(f'This is your token:\n{token}')
+
+                    #If there's a token, create a session with all user value inside (So we can create the account after verifying 2fa in other route)
+                    if token:
+                        dict_value = {'username': username, 'hashed_password': hashed_password, 'email': email, 'school': school}
+                        create_session('temp_sign_up_dict', dict_value)
+                        signup_status = f'An verification token has been sent to {email}'
+
+                        message = Message('Email verification | ConnectNYPian', sender='ConnectNYPian@gmail.com', recipients=['ongwenjie24@gmail.com'])
+                        verification_link = url_for('confirm_email', token=token, _external=True)
+                        message.body = f'Your link is {verification_link}'
+                        mail.send(message)
+
+                    else: # If the token has issue
+                        signup_status = '2FA token generation error has occurred'
+
+
+                    #Tell user that email verification has been send
+
             else:  #If username and email is not avaliable
                 print("Sign up fail")
                 if username_exist: #If only email exist
@@ -300,7 +366,7 @@ def signup():
 
         # DML into MySQLdb
 
-    return render_template('processes/signup.html', form=form, username_error=username_error, email_error=email_error)
+    return render_template('processes/signup.html', form=form, username_error=username_error, email_error=email_error, signup_status=signup_status)
 
 @app.route('/admin')
 def admin():
