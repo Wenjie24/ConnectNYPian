@@ -266,9 +266,13 @@ def user(id):
 @app.route('/confirm_email/<token>')
 def confirm_email(token):
     try:
-        email = serializer.loads(token, salt='sign_up', max_age = 30)
+        #Check for same token
+        email = serializer.loads(token, salt='sign_up', max_age=300)
     except SignatureExpired:
-        return 'Signature Expired'
+
+        return 'Token Expired, please sign up again.'
+    except Exception:
+        return 'Unknown error has occurred'
     else:
 
         if check_session('temp_sign_up_dict'):
@@ -288,7 +292,11 @@ def confirm_email(token):
                 account_id = execute_fetchone('SELECT account_id FROM accounts WHERE username = %s', (username, ))
                 execute_commit('INSERT INTO students (account_id, school) VALUES (%s, %s)', (account_id['account_id'], school))
                 print("Account created")
-                return redirect(url_for('login'))
+                return "Token Valid, Account created, Please log in to continue."
+    finally:
+        #Remove user dict if expired
+        remove_session('temp_sign_up_dict')
+
 
 
 
@@ -336,9 +344,9 @@ def signup():
                         create_session('temp_sign_up_dict', dict_value)
                         signup_status = f'An verification token has been sent to {email}'
 
-                        message = Message('Email verification | ConnectNYPian', sender='ConnectNYPian@gmail.com', recipients=[email])
+                        message = Message('Email verification', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
                         verification_link = url_for('confirm_email', token=token, _external=True)
-                        message.body = f'Your link is {verification_link}'
+                        message.body = f'Here is your verification link for Username: {username}\n\n{verification_link}\n\nVerification link will expire in 5 minutes.'
                         mail.send(message)
 
                     else: # If the token has issue
@@ -379,7 +387,8 @@ def admin():
 def login():
     if check_login_status():
         return redirect(url_for('home'))
-    
+
+
     form=login_form(request.form)
 
     # Setting error message
@@ -475,7 +484,7 @@ def login():
 
 
 
-    return render_template('processes/login.html', form=form, account_locked=account_locked, invalid_pass_or_username=invalid_pass_or_username)
+    return render_template('processes/login.html', signup_successful=signup_successful, form=form, account_locked=account_locked, invalid_pass_or_username=invalid_pass_or_username)
 
 @app.route('/logout')
 def logout():
