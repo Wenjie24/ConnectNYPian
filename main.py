@@ -20,7 +20,7 @@ app.config['SECRET_KEY'] = 'AAjACNiLqAjtjnW8DEonAAwUbd3jnroCdrtrYhlYc'
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
 
-app.config['MYSQL_PASSWORD'] = 'wenjie'
+app.config['MYSQL_PASSWORD'] = 'mysql'
 
 app.config['MYSQL_DB'] = 'connectnypian_db'  # Standardised schema name
 app.config['MYSQL_PORT'] = 3306
@@ -41,14 +41,15 @@ csrf = CSRFProtect(app)
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
 #Enable mail
-mail = Mail(app)
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 465
-app.config['MAIL_USERNAME'] = 'ConnectNYPian@gmail.com'
-app.config['MAIL_PASSWORD'] = '!ConnectNYPian123!'
-app.config['MAIL_USE_TLS'] = False
-app.config['MAIL_USE_SSL'] = True
 
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USERNAME'] = 'ConnectNYPian@gmail.com'
+app.config['MAIL_PASSWORD'] = 'zpuvubhesqjabipo'
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USE_SSL'] = False
+
+mail = Mail(app)
 
 #Common MYSQL code
 # mycursor.execute('SELECT * FROM %s', (table)) # Execute a query
@@ -335,7 +336,7 @@ def signup():
                         create_session('temp_sign_up_dict', dict_value)
                         signup_status = f'An verification token has been sent to {email}'
 
-                        message = Message('Email verification | ConnectNYPian', sender='ConnectNYPian@gmail.com', recipients=['ongwenjie24@gmail.com'])
+                        message = Message('Email verification | ConnectNYPian', sender='ConnectNYPian@gmail.com', recipients=[email])
                         verification_link = url_for('confirm_email', token=token, _external=True)
                         message.body = f'Your link is {verification_link}'
                         mail.send(message)
