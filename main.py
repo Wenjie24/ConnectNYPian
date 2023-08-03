@@ -20,7 +20,7 @@ app.config['SECRET_KEY'] = 'AAjACNiLqAjtjnW8DEonAAwUbd3jnroCdrtrYhlYc'
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
 
-app.config['MYSQL_PASSWORD'] = 'mysql'
+app.config['MYSQL_PASSWORD'] = 'wenjie'
 
 app.config['MYSQL_DB'] = 'connectnypian_db'  # Standardised schema name
 app.config['MYSQL_PORT'] = 3306
@@ -484,7 +484,7 @@ def login():
 
 
 
-    return render_template('processes/login.html', signup_successful=signup_successful, form=form, account_locked=account_locked, invalid_pass_or_username=invalid_pass_or_username)
+    return render_template('processes/login.html', form=form, account_locked=account_locked, invalid_pass_or_username=invalid_pass_or_username)
 
 @app.route('/logout')
 def logout():
