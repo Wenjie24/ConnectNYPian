@@ -344,7 +344,7 @@ def signup():
                         create_session('temp_sign_up_dict', dict_value)
                         signup_status = f'An verification token has been sent to {email}'
 
-                        message = Message('Email verification', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
+                        message = Message(f'Email verification for {email}', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
                         verification_link = url_for('confirm_email', token=token, _external=True)
                         message.body = f'Here is your verification link for Username: {username}\n\n{verification_link}\n\nVerification link will expire in 5 minutes.'
                         mail.send(message)
