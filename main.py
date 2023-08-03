@@ -77,6 +77,8 @@ def execute_commit(query, parameterized_query_data=None): #Get cursor, execute a
     except Error as e:
         print("Error Executing query:", e)
         return None
+    else:
+        return True
 
 def execute_fetchone(query, parameterized_query_data=None): #Get cursor, execute and return result
     try:
@@ -494,6 +496,58 @@ def logout():
     return redirect(url_for('home'))
 
 
+@app.route('/reset_pass')
+def reset_pass():
+    if check_login_status():
+        user_id = check_session('login_id')
+
+        account_details = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s', (user_id,))
+        user_email = account_details['school_email']
+
+        token = serializer.dumps(user_email, salt='reset_pass')
+
+
+        message = Message(f'Reset Password', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
+        verification_link = url_for('reset_pass_confirmed', token=token, _external=True)
+        message.body = f'Here is your reset Link\n\n{verification_link}\n\nVerification link will expire in 5 minutes.'
+        mail.send(message)
+
+        return f'reset link send to {user_email}'
+
+    else:
+        return 'please log in'
+
+@app.route('/reset_pass_confirmed/<token>', methods=['GET','POST'])
+def reset_pass_confirmed(token):
+    try:
+        serializer.loads(token, salt='reset_pass', max_age=300)
+    except SignatureExpired:
+        return 'token expired'
+    else:
+
+
+        form = reset_pass_form(request.form)
+
+        reset_link = url_for('reset_pass_confirmed', token=token, _external=True)
+
+        if request.method == 'POST' and form.validate():
+            password = request.form['password']
+            hashed_pass = bcrypt.generate_password_hash(password)
+            sql_query = 'UPDATE accounts SET hashed_pass = %s WHERE account_id = %s'
+            val = (hashed_pass, check_session('login_id'),)
+            result = execute_commit(sql_query, val)
+
+            
+            if result:
+                return 'password updated'
+            else:
+                return 'error while updating password'
+
+
+
+
+        else:
+            return render_template('/processes/reset_pass.html', form=form, reset_link=reset_link)
 
 
 @app.route('/createpost', methods=['GET', 'POST'])
