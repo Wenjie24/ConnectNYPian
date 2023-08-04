@@ -26,7 +26,7 @@
 
           {% if account_locked %}
           <div class="mb-3">
-            <p>Account Locked, Please Contact Support@ConnectNYPian.com</p>
+            <p>Account Locked, Please Contact <a href="/unlock-account">Support@ConnectNYPian.com</a></p>
           </div>
           {% elif invalid_pass_or_username %}
           <div class="mb-3">
@@ -34,7 +34,7 @@
           </div>
           {% endif %}
 
-          <p class="form-text"><span style="font-size: 14px;">Don't have an account? <a href="/signup" style="font-size: 14px;">Sign up</a></span></p>
+          <p class="form-text" style="margin-bottom:30px"><span style="font-size: 14px;">Don't have an account? <a href="/signup" style="font-size: 14px;">Sign up</a></span></p>
           <br>
           <button type="submit" class="btn btn-primary form-control">Login</button>
         </form>

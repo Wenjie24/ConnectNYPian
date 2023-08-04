@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title%}Profile{% endblock %}
+{% from "includes/formHelper.html" import render_field %}
+{% block content %}
+
+<div class="container" style="max-width: 900px;margin-bottom:400px">
+<h4>Report post</h4>
+<br><br>
+<form action="/report-post/{{post_id}}" method="POST">
+    {{ form.csrf_token }}
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    {{ render_field(form.reason, class='form-control w-50')}}
+    <br>
+    <button type="submit" class="btn btn-primary">Submit</button>
+</form>
+</div>
+
+{% endblock %}

@@ -53,12 +53,39 @@
         <a href="" style="text-decoration: none; color: black"><img src="/static/images/share.png" style="width: 24px; margin-right: 10px; margin-bottom: 4px">Share</a>
       </div>
       <div class="col">
-        <a href=""><img src="/static/images/more.png" style="width: 22px"></a>
+        <div class="dropdown show">
+          <a href="#" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><img src="/static/images/more.png" style="width: 22px"></a>
+          <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
+            <a class="dropdown-item" href="/report-post/{{post.post_id}}">Report post</a>
+            <a class="dropdown-item" href="/block/{{post.account_id}}">Block {{post.username}}</a>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 <br>
 <br>
 </main>
+<!-- Modal 
+<div class="modal" id="myModal" role="dialog">
+  <div class="modal-dialog modal-sm">
+  
+    <div class="modal-content p-2">
+      <div style="padding: 10px; padding-bottom:5px">
+        <a>Report post</a>
+      </div>
+      <hr style="margin: 0px;">
+      <div style="padding: 10px;">
+        <a>Report account</a>
+      </div>
+      <hr style="margin: 0px;">
+      <div style="padding: 10px; padding-bottom:5px">
+        <a>Block account</a>
+      </div>
+    </div>
+    
+  </div>
+</div>
+-->
 {% endfor %}
 {% endblock %}

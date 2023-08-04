@@ -114,7 +114,6 @@ def check_login_status():
         print("Unknown error when checking login status session", e)
     else:
         return login_status
-
 # End of session function
 
 def checklike(post_id):
@@ -139,12 +138,24 @@ def checklockedstatus(account_id):
     except TypeError:
         return False
 
+def checksecurityquestions():
+    sql = 'SELECT * FROM security_questions WHERE account_id = %s'
+    val = str(session['login_id']),
+    result = execute_fetchone(sql, val)
+    if result:
+        return True
+    else:
+        print('redirecting')
+        return redirect(url_for('create_security_questions'))
 # END OF EXTERNAL FUNCTIONS
+
 @app.route('/')
 def home():
     # Extract all the post from sql
     if check_login_status(): #Check for login
         print("logged in")
+        if checksecurityquestions() != True:
+            return checksecurityquestions()
         sql = 'SELECT * FROM posts INNER JOIN accounts on posts.account_id = accounts.account_id ORDER BY posts.post_timestamp desc'
         feed = execute_fetchall(sql)
         sql = 'SELECT post_id FROM likes WHERE account_id = %s'
@@ -162,6 +173,8 @@ def school_home():
     # Extract all the school-specific post from sql
     if check_login_status(): #Check for login
         print("logged in")
+        if checksecurityquestions() != True:
+            return checksecurityquestions()
         school_specific = True
         sql = 'SELECT school FROM students WHERE account_id = %s'
         val = str(session['login_id']),
@@ -181,7 +194,9 @@ def school_home():
 
 @app.route('/user/<int:id>')
 def user(id):
-    if check_login_status(): #Check for logn status
+    if check_login_status(): #Check for login status
+        if checksecurityquestions() != True:
+            return checksecurityquestions()
         try:
             result = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s', (id,)) #Try to retrieve account id
             posts = execute_fetchall('SELECT * FROM posts WHERE account_id = %s ORDER BY post_timestamp desc', (id, ))
@@ -216,14 +231,14 @@ def user(id):
                 else:
                     if check_session('login_id') == account_id: #Check if target account is logged in
                         print(account_id)
-                        return render_template('profile.html', is_owner=True, account_id=account_id, school_email=school_email, username=username, created_timestamp=created_timestamp, posts=posts, is_following=False, following=following, followers=followers, post_no=post_no)
+                        return render_template('profile.html', is_owner=True, account_id=account_id, school_email=school_email, username=username, created_timestamp=created_timestamp, posts=posts, is_following=False, following=following, followers=followers, post_no=post_no, is_blocked=False)
                         print("Account id logged in")
                     else:
                         print("Account id not logged in")
+                        
                         # check if following the user
                         following_list = execute_fetchall('SELECT * FROM follow_account WHERE follower_id = %s', (str(session['login_id']), ))
                         following_list = [item['followee_id'] for item in following_list]
-                        print(following_list)
                         if following_list:
                             for account in following_list:
                                 if int(account) == int(id):
@@ -235,7 +250,22 @@ def user(id):
                                     print("FALSE")
                         else:
                             is_following = False
-                        return render_template('profile.html',  account_id=account_id, school_email=school_email, username=username, created_timestamp=created_timestamp, posts=posts, is_following=is_following, following=following, followers=followers, post_no=post_no)
+                        
+                        # check if blocked the user
+                        blocked_list = execute_fetchall('SELECT * FROM blocks WHERE blocker_account_id = %s', (str(session['login_id']), ))
+                        blocked_list = [item['blocked_account_id'] for item in blocked_list]
+                        if blocked_list:
+                            for account in blocked_list:
+                                if int(account) == int(id):
+                                    is_blocked = True
+                                    break
+                                else:
+                                    is_blocked = False
+                        else:
+                            is_blocked = False
+
+                        return render_template('profile.html',  account_id=account_id, school_email=school_email, username=username, created_timestamp=created_timestamp, posts=posts, is_following=is_following, following=following, followers=followers, post_no=post_no, is_blocked=is_blocked)
+                    
 
             else: #If account id not exist
                 return 'no such account page'
@@ -356,6 +386,7 @@ def login():
                             create_session('login_status', True)
                             create_session('login_id', account_id)
                             create_session('username', username)
+                            session.permanent = True
 
                             #Reset account status
                             sql = 'DELETE FROM account_status WHERE account_id = %s AND failed_attempts < 5'
@@ -425,6 +456,8 @@ def createpost():
     if 'login_status' not in session:
         return redirect(url_for('login'))
     
+    if checksecurityquestions() != True:
+            return checksecurityquestions()
     form = create_post(request.form)
     if request.method == 'POST' and form.validate():
         # assign form data to variables
@@ -445,6 +478,8 @@ def createpost():
 def createlike(post_id):
     try:
         if 'login_id' in session and checklike(post_id) == False:
+            if checksecurityquestions() != True:
+                return checksecurityquestions()
             sql = "INSERT INTO likes (account_id, post_id) VALUES (%s, %s)"
             val = (session['login_id'], post_id)
             execute_commit(sql, val)
@@ -457,6 +492,8 @@ def createlike(post_id):
 def removelike(post_id):
     try:
         if 'login_id' in session:
+            if checksecurityquestions() != True:
+                return checksecurityquestions()
             sql = "DELETE FROM likes WHERE post_id = %s AND account_id = %s"
             val = (post_id, session['login_id'])
             execute_commit(sql, val)
@@ -470,6 +507,8 @@ def deletepost(post_id):
     try:
         if 'login_id' in session:
             try:
+                if checksecurityquestions() != True:
+                    return checksecurityquestions()
                 sql = 'SELECT account_id FROM posts WHERE post_id = %s'
                 val = (post_id, )
                 account_id = execute_fetchone(sql, val)
@@ -497,6 +536,8 @@ def comments(post_id):
             return redirect(url_for('login'))
 
         if 'login_id' in session:
+            if checksecurityquestions() != True:
+                return checksecurityquestions()
             sql = 'SELECT * FROM posts INNER JOIN accounts ON posts.account_id = accounts.account_id WHERE posts.post_id = %s'
             val = (str(post_id), )
             post = execute_fetchone(sql, val)
@@ -531,6 +572,8 @@ def deletecomment(post_id, comment_id):
     try:
         if 'login_id' in session:
             try:
+                if checksecurityquestions() != True:
+                    return checksecurityquestions()
                 sql = 'SELECT account_id FROM comments WHERE comment_id = %s'
                 val = (str(comment_id), )
                 account_id = execute_fetchone(sql, val)
@@ -575,6 +618,8 @@ def create_security_questions():
 def follow_account(account_id):
     try:
         if 'login_id' in session:
+            if checksecurityquestions() != True:
+                return checksecurityquestions()
             sql = 'INSERT INTO follow_account (follower_id, followee_id) VALUES (%s, %s)'
             val = (str(session['login_id']), account_id)
             execute_commit(sql, val)
@@ -591,6 +636,8 @@ def follow_account(account_id):
 def unfollow_account(account_id):
     try:
         if 'login_id' in session:
+            if checksecurityquestions() != True:
+                return checksecurityquestions()
             sql = 'DELETE FROM follow_account WHERE follower_id = %s and followee_id = %s'
             val = (str(session['login_id']), account_id)
             execute_commit(sql, val)
@@ -602,6 +649,76 @@ def unfollow_account(account_id):
 
     except Error as e:
         print('Error following account:', e)
+
+@app.route('/block/<account_id>')
+def block(account_id):
+    try:
+        if 'login_id' in session:
+            if checksecurityquestions() != True:
+                return checksecurityquestions()
+            
+            sql = 'SELECT * FROM blocks WHERE blocker_account_id = %s AND blocked_account_id = %s'
+            val = (str(session['login_id']), account_id)
+            blocked = execute_fetchall(sql, val)
+            if blocked:
+                is_blocked = True
+            else:
+                sql = 'INSERT INTO blocks (blocker_account_id, blocked_account_id) VALUES (%s, %s)'
+                execute_commit(sql, val)
+                sql = 'DELETE FROM follow_account WHERE follower_id = %s and followee_id = %s'
+                execute_commit(sql, val)
+                is_blocked = True
+            return redirect(url_for('user', id=account_id, is_blocked=is_blocked))
+        
+        else:
+            return redirect(url_for('login'))
+        
+    except Error as e:
+        print('Error blocking account:', e)
+
+@app.route('/unblock/<account_id>')
+def unblock(account_id):
+    try:
+        if 'login_id' in session:
+            if checksecurityquestions() != True:
+                return checksecurityquestions()
+            
+            sql = 'DELETE FROM blocks WHERE blocker_account_id = %s AND blocked_account_id = %s'
+            val = (str(session['login_id']), account_id)
+            execute_commit(sql, val)
+            is_blocked = False
+        
+            return redirect(url_for('user', id=account_id, is_blocked=is_blocked))
+        
+        
+        else:
+            return redirect(url_for('login'))
+        
+    except Error as e:
+        print('Error unblocking account:', e)
+
+@app.route('/report-post/<post_id>', methods=['GET', 'POST'])
+def report_post(post_id):
+    try:
+        if 'login_id' in session:
+            if checksecurityquestions() != True:
+                return checksecurityquestions()
+            form = report_form(request.form)
+            if request.method == 'POST' and form.validate():
+                reason = form.reason.data
+                sql = 'INSERT INTO report_post (reporter_id, post_id, reason) VALUES (%s, %s, %s)'
+                val = (str(session['login_id']), post_id, reason)
+                execute_commit(sql, val)
+                return redirect(url_for('home'))
+            return render_template('/processes/report_post.html', form=form, post_id=post_id)
+        else:
+            return redirect(url_for('login'))
+        
+    except Error as e:
+        print('Error reporting user:', e)
+
+
+
 
 
 if __name__ == '__main__':

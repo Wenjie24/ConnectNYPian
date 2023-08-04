@@ -7,7 +7,7 @@ class create_post(Form):
     category = SelectField('', choices=['placeholder choice', 'another placeholder choice'], validators=[validators.DataRequired()], render_kw={'style':'height:45px'})
 
 class create_comment(Form):
-    body = TextAreaField('', render_kw={'placeholder': 'Comment:'})
+    body = TextAreaField('', render_kw={'placeholder': 'Comment:'}, validators=[validators.DataRequired()])
 
 class signup_form(Form):
     username = StringField('Username', validators=[validators.regexp('^[A-za-z1-9]+$', message='Username should not contain symbols.'), validators.DataRequired()]) # Regex to allow only string
@@ -25,3 +25,6 @@ class security_questions(Form):
     qn1_ans = StringField('Answer', validators=[validators.DataRequired()])
     qn2 = SelectField('Second Security Question:', choices=["What is your mother's maiden name?", "What is your father's first job?", "What is your first job?"], validators=[validators.DataRequired()])
     qn2_ans = StringField('Answer', validators=[validators.DataRequired()])
+
+class report_form(Form):
+    reason = SelectField('Reason for reporting:', choices=['Offensive content', 'Spam', "I'm being impersonated", 'Sensitive or disturbing content'], validators=[validators.DataRequired()])
