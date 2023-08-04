@@ -11,6 +11,9 @@
     <div class="card">
       <div class="card-body">
         <h4 class="card-title" style="font-weight: bold;">Account Login</h4>
+        {% if signup_successful %}
+        <p>Sign up successful for {{signup_successful}}, please log in.</p>
+        {% endif %}
         <br>
 
         <form action="/login" method="POST">
