@@ -1,11 +1,22 @@
-CREATE TABLE IF NOT EXISTS accounts (account_id INT NOT NULL AUTO_INCREMENT, school_email VARCHAR(30) UNIQUE, username VARCHAR(30) UNIQUE, hashed_pass VARCHAR(255), created_timestamp DATETIME DEFAULT CURRENT_TIMESTAMP(), PRIMARY KEY (account_id), UNIQUE (account_id, username, school_email));
+ignore this --> sql = 'SELECT * FROM posts INNER JOIN accounts on posts.account_id = accounts.account_id ORDER BY posts.post_timestamp desc'
+
+CREATE TABLE IF NOT EXISTS accounts (
+    account_id INT NOT NULL AUTO_INCREMENT, 
+    school_email VARCHAR(30) UNIQUE, 
+    username VARCHAR(30) UNIQUE, 
+    hashed_pass VARCHAR(255), 
+    created_timestamp DATETIME DEFAULT CURRENT_TIMESTAMP(), 
+    PRIMARY KEY (account_id), 
+    UNIQUE (account_id, username, school_email));
 
 CREATE TABLE IF NOT EXISTS posts (
 	post_id INT NOT NULL AUTO_INCREMENT, 
 	title VARCHAR(50) NOT NULL, 
 	body VARCHAR(1000), post_timestamp DATETIME DEFAULT CURRENT_TIMESTAMP(), 
 	category VARCHAR(30), 
-	account_id INT NOT NULL, 
+	account_id INT NOT NULL,
+    like_count INT DEFAULT 0,
+    comment_count INT DEFAULT 0,
 	PRIMARY KEY (post_id), 
 	FOREIGN KEY (account_id) REFERENCES accounts(account_id)
     );

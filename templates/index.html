@@ -38,15 +38,15 @@
     <hr>
     <div class="row w-75">
       <div class="col">
-        <a href="/comments/{{post.post_id}}" style="text-decoration: none; color: black"><img src="/static/images/comment.png" style="width: 27px; margin-right: 10px; margin-bottom: 4px">10</a>
+        <a href="/comments/{{post.post_id}}" style="text-decoration: none; color: black"><img src="/static/images/comment.png" style="width: 27px; margin-right: 10px; margin-bottom: 4px">{{post.comment_count}}</a>
       </div>
       {% if post.post_id in liked_posts %}
       <div class="col">
-        <a href="/removelike/{{post.post_id}}" style="text-decoration: none; color: red"><img src="/static/images/liked.png" style="width: 27px; margin-right: 10px; margin-bottom: 4px">30</a>
+        <a href="/removelike/{{post.post_id}}" style="text-decoration: none; color: red"><img src="/static/images/liked.png" style="width: 27px; margin-right: 10px; margin-bottom: 4px">{{post.like_count}}</a>
       </div>
       {% else %}
       <div class="col">
-        <a href="/createlike/{{post.post_id}}" style="text-decoration: none; color: black"><img src="/static/images/unliked.png" style="width: 27px; margin-right: 10px; margin-bottom: 4px">30</a>
+        <a href="/createlike/{{post.post_id}}" style="text-decoration: none; color: black"><img src="/static/images/unliked.png" style="width: 27px; margin-right: 10px; margin-bottom: 4px">{{post.like_count}}</a>
       </div>
       {%endif%}
       <div class="col">

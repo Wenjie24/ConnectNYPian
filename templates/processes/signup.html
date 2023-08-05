@@ -7,7 +7,7 @@
     document.getElementById("demo-form").submit();
   }
 </script>
-<main class="container" style="max-width: 1300px;">
+<main class="container" style="max-width: 470px;">
   <!--
 
 
@@ -24,8 +24,7 @@
       - [ ] COURSE (FOR SIGN UP ONLY)
   -->
 
-  <div class="row justify-content-center">
-    <!-- Left Side -->
+  <!--<div class="row justify-content-center">
     <div class="col-6">
       <div class="card">
         <div class="card-body">
@@ -42,11 +41,11 @@
           </p>
         </div>
       </div>
-    </div>
+    </div> -->
 
 
     <!-- Right Side -->
-    <div class="col-4">
+    <div class="">
       <div class="card">
         <div class="card-body">
           <h4 class="card-title" style="font-weight: bold;">Account Sign up</h4>
@@ -84,9 +83,35 @@
               {{ render_field(form.school, class='form-control') }}
             </div>
 
+            {% if password_error %}
+            <div class="mb-3">
+              {{ render_field(form.password, class="form-control", style="border-color: red;") }}
+            </div>
+
+            <div class="mb-3">
+              {{ render_field(form.reenterpassword, class="form-control", style="border-color: red;") }}
+            </div>
+            <p style="color: red">Entered passwords are not the same.</p>
+            
+            {% elif password_error == False %}
+            <div class="mb-3">
+              {{ render_field(form.password, class="form-control", style="border-color: green;") }}
+            </div>
+
+            <div class="mb-3">
+              {{ render_field(form.reenterpassword, class="form-control", style="border-color: green;") }}
+            </div>
+            
+            {% else %}
             <div class="mb-3">
               {{ render_field(form.password, class="form-control") }}
             </div>
+
+            <div class="mb-3">
+              {{ render_field(form.reenterpassword, class="form-control") }}
+            </div>
+            {% endif %}
+
             <div class="mb-3">
               {{ render_field(form.recaptcha, class="form-control") }}
             </div>

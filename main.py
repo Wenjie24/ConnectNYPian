@@ -175,8 +175,9 @@ def home():
         print("logged in")
         if checksecurityquestions() != True:
             return checksecurityquestions()
-        sql = 'SELECT * FROM posts INNER JOIN accounts on posts.account_id = accounts.account_id ORDER BY posts.post_timestamp desc'
-        feed = execute_fetchall(sql)
+        sql = 'SELECT * FROM posts INNER JOIN accounts on posts.account_id = accounts.account_id WHERE posts.account_id NOT IN (SELECT blocked_account_id FROM blocks WHERE blocker_account_id = %s) AND posts.account_id NOT IN (SELECT blocker_account_id FROM blocks WHERE blocked_account_id = %s) ORDER BY posts.post_timestamp desc'
+        val = (str(session['login_id']), str(session['login_id']))
+        feed = execute_fetchall(sql, val)
         sql = 'SELECT post_id FROM likes WHERE account_id = %s'
         val = str(session['login_id']),
         original_list = execute_fetchall(sql, val)
@@ -198,8 +199,8 @@ def school_home():
         sql = 'SELECT school FROM students WHERE account_id = %s'
         val = str(session['login_id']),
         school = execute_fetchone(sql, val)
-        sql = 'SELECT * FROM posts INNER JOIN accounts on posts.account_id = accounts.account_id INNER JOIN students ON posts.account_id = students.account_id WHERE students.school = %s ORDER BY posts.post_timestamp desc'
-        val = str(school['school']),
+        sql = 'SELECT * FROM posts INNER JOIN accounts on posts.account_id = accounts.account_id INNER JOIN students ON posts.account_id = students.account_id WHERE students.school = %s AND posts.account_id NOT IN (SELECT blocked_account_id FROM blocks WHERE blocker_account_id = %s) AND posts.account_id NOT IN (SELECT blocker_account_id FROM blocks WHERE blocked_account_id = %s) ORDER BY posts.post_timestamp desc'
+        val = (str(school['school']), str(session['login_id']), str(session['login_id']))
         feed = execute_fetchall(sql, val)
         sql = 'SELECT post_id FROM likes WHERE account_id = %s'
         val = str(session['login_id']),
@@ -344,6 +345,7 @@ def signup():
     username_error = None
     email_error = None
     signup_status = None
+    password_error = None
 
     form = signup_form(request.form)
     # If there's a POST request(Form submitted) enter statement.
@@ -354,15 +356,20 @@ def signup():
         try:
             username = request.form['username']
             password = request.form['password']
+            reenterpassword = request.form['reenterpassword']
             school = form.school.data
             hashed_password = bcrypt.generate_password_hash(password)  # Hash the password
             email = request.form['email']
+            if password == reenterpassword:
+                password_same = True
+            else:
+                password_same = False
             username_exist = execute_fetchone('SELECT username FROM accounts WHERE username = %s', (username,))
             email_exist = execute_fetchone('SELECT school_email FROM accounts WHERE school_email = %s', (email,))
         except Error as e:
             print("Error trying to retrieve sign up for credential\n", e)
         else:
-            if not username_exist and not email_exist: # If username and email is avaliable
+            if not username_exist and not email_exist and password_same: # If username and email is avaliable
                 if hashed_password:# If password is hashed and ready to use
                     # Try 2FA to confirm email exist
 
@@ -393,21 +400,41 @@ def signup():
                     print("username exist")
                     username_error= True
                     email_error = False
+                    password_error = False
                 if email_exist: #If only email exist
                     print("Email exist")
                     email_error=True
                     username_error = False
+                    password_error = False
 
                 if username_exist and email_exist: #If both exist
                     username_error = True
                     email_error = True
+                    password_error = False
+                
+                if not password_same:
+                    username_error = False
+                    email_error = False
+                    password_error = True
 
+                if username_exist and not password_same:
+                    username_error = True
+                    email_error = False
+                    password_error = True
 
+                if username_exist and email_error and not password_same:
+                    username_error = True
+                    email_error = True
+                    password_error = True
 
+                if email_error and not password_same:
+                    username_error = False
+                    email_error = True
+                    password_error = True
 
         # DML into MySQLdb
 
-    return render_template('processes/signup.html', form=form, username_error=username_error, email_error=email_error, signup_status=signup_status)
+    return render_template('processes/signup.html', form=form, username_error=username_error, email_error=email_error, signup_status=signup_status, password_error=password_error)
 
 @app.route('/admin')
 def admin():
@@ -613,6 +640,9 @@ def createlike(post_id):
             sql = "INSERT INTO likes (account_id, post_id) VALUES (%s, %s)"
             val = (session['login_id'], post_id)
             execute_commit(sql, val)
+            sql = 'UPDATE posts SET like_count = like_count + 1 WHERE post_id = %s'
+            val = (post_id, )
+            execute_commit(sql, val)
         return redirect(url_for('home'))
 
     except Error as e:
@@ -626,6 +656,9 @@ def removelike(post_id):
                 return checksecurityquestions()
             sql = "DELETE FROM likes WHERE post_id = %s AND account_id = %s"
             val = (post_id, session['login_id'])
+            execute_commit(sql, val)
+            sql = 'UPDATE posts SET like_count = like_count - 1 WHERE post_id = %s'
+            val = (post_id, )
             execute_commit(sql, val)
         return redirect(url_for('home'))
     
@@ -687,6 +720,9 @@ def comments(post_id):
                 val = (body, session['login_id'], post_id)
                 execute_commit(sql, val)
                 print("comment added to database")
+                sql = 'UPDATE posts SET comment_count = comment_count + 1 WHERE post_id = %s'
+                val = (post_id, )
+                execute_commit(sql, val)
                 sql = 'SELECT * FROM comments INNER JOIN accounts ON comments.account_id = accounts.account_id WHERE comments.post_id = %s ORDER BY comments.comment_timestamp desc'
                 val = (str(post_id), )
                 comments = execute_fetchall(sql, val)
@@ -712,12 +748,12 @@ def deletecomment(post_id, comment_id):
             else:
                 if session['login_id'] == account_id['account_id']:
                     sql = 'DELETE FROM comments WHERE comment_id = %s'
-                    sql = 'DELETE FROM comments WHERE comment_id = %s'
-                    val = (str(comment_id), )
-                    sql = 'DELETE FROM comments WHERE comment_id = %s'
                     val = (str(comment_id), )
                     execute_commit(sql, val)
                     print('comment deleted')
+                    sql = 'UPDATE posts SET comment_count = comment_count - 1 WHERE post_id = %s'
+                    val = (post_id, )
+                    execute_commit(sql, val)
             return redirect(url_for('comments', post_id=post_id))
     
     except Error as e:
@@ -787,6 +823,9 @@ def block(account_id):
             if checksecurityquestions() != True:
                 return checksecurityquestions()
             
+            if str(session['login_id']) == str(account_id):
+                return redirect(url_for('user', id=account_id, is_blocked=False))
+            
             sql = 'SELECT * FROM blocks WHERE blocker_account_id = %s AND blocked_account_id = %s'
             val = (str(session['login_id']), account_id)
             blocked = execute_fetchall(sql, val)
@@ -820,6 +859,9 @@ def unblock(account_id):
         
             return redirect(url_for('user', id=account_id, is_blocked=is_blocked))
         
+        
+        
+
         
         else:
             return redirect(url_for('login'))
