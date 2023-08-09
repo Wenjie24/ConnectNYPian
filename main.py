@@ -899,3 +899,4 @@ if __name__ == '__main__':
 
 #Security Issue
 #1) account cant be locked if it does not exist
+#2) Check database before performing query instead of session
