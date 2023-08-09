@@ -895,3 +895,7 @@ def report_post(post_id):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+
+#Security Issue
+#1) account cant be locked if it does not exist
