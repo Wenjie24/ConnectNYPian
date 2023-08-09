@@ -1,6 +1,7 @@
 ignore this --> sql = 'SELECT * FROM posts INNER JOIN accounts on posts.account_id = accounts.account_id ORDER BY posts.post_timestamp desc'
 
 
+
 CREATE TABLE IF NOT EXISTS accounts (
     account_id INT NOT NULL AUTO_INCREMENT,
     school_email VARCHAR(30) UNIQUE,
@@ -14,7 +15,7 @@ CREATE TABLE IF NOT EXISTS verification_token (
 	TOKEN VARCHAR(1000) NOT NULL ,
     account_id INT NOT NULL,
     timecreated DATETIME DEFAULT CURRENT_TIMESTAMP(),
-	token_type VARCHAR(10) DEFAULT 'reset',
+	token_type VARCHAR(10) DEFAULT 'signup',
     used_boolen BOOLEAN DEFAULT FALSE,
     PRIMARY KEY (account_id, timecreated, token_type),
     FOREIGN KEY (account_id) REFERENCES accounts(account_id)

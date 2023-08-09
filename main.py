@@ -302,30 +302,39 @@ def confirm_email(token):
         #Check for same token
         email = serializer.loads(token, salt='sign_up', max_age=300)
     except SignatureExpired:
-
         return 'Token Expired, please sign up again.'
     except Exception:
         return 'Unknown error has occurred'
     else:
 
         if check_session('temp_sign_up_dict'):
-            try:
-                dict_value = check_session('temp_sign_up_dict')
-                hashed_password = dict_value['hashed_password']
-                email = dict_value['email']
-                username = dict_value['username']
-                school = dict_value['school']
 
-            except Exception:
-                return 'Unknown Error Has Occured'
+            #If there's token and is false
+            token_detail = execute_fetchone('SELECT token_type, used_boolen FROM verification_token WHERE token = %s', (token,))
+            if token_detail['token_type'] == 'signup' and token_detail['used_boolen'] == False:
+
+                #Update the table that the token is used
+                execute_commit('UPDATE used_boolen SET used_boolen = %s WHERE token = %s', (True, token))
+
+                try:
+                    dict_value = check_session('temp_sign_up_dict')
+                    hashed_password = dict_value['hashed_password']
+                    email = dict_value['email']
+                    username = dict_value['username']
+                    school = dict_value['school']
+
+                except Exception:
+                    return 'Unknown Error Has Occured'
+                else:
+                     # Inserting data into account: account_id, email, username, date_created
+                    execute_commit('INSERT INTO accounts (hashed_pass, school_email, username) VALUES (%s, %s, %s)',(hashed_password, email, username))
+                    # Inserting school into sub table
+                    account_id = execute_fetchone('SELECT account_id FROM accounts WHERE username = %s', (username, ))
+                    execute_commit('INSERT INTO students (account_id, school) VALUES (%s, %s)', (account_id['account_id'], school))
+                    print("Account created")
+                    return "Token Valid, Account created, Please log in to continue."
             else:
-                 # Inserting data into account: account_id, email, username, date_created
-                execute_commit('INSERT INTO accounts (hashed_pass, school_email, username) VALUES (%s, %s, %s)',(hashed_password, email, username))
-                # Inserting school into sub table
-                account_id = execute_fetchone('SELECT account_id FROM accounts WHERE username = %s', (username, ))
-                execute_commit('INSERT INTO students (account_id, school) VALUES (%s, %s)', (account_id['account_id'], school))
-                print("Account created")
-                return "Token Valid, Account created, Please log in to continue."
+                return 'Token not exist or smth la'
     finally:
         #Remove user dict if expired
         remove_session('temp_sign_up_dict')
@@ -381,6 +390,7 @@ def signup():
                     if token:
                         dict_value = {'username': username, 'hashed_password': hashed_password, 'email': email, 'school': school}
                         create_session('temp_sign_up_dict', dict_value)
+                        execute_commit('INSERT INTO verification_token VALUES (%s, %s, %s)', (token, ))
                         signup_status = f'An verification token has been sent to {email}'
 
                         message = Message(f'Email verification for {email}', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
