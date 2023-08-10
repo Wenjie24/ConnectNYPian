@@ -308,7 +308,7 @@ def school_home():
 def user(id):
     if check_login_status(): #Check for login status
         try:
-            result = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s', (id,)) #Try to retrieve account id
+            result = execute_fetchone('SELECT * FROM accounts a INNER JOIN students s ON a.account_id = s.account_id WHERE a.account_id = %s', (id,)) #Try to retrieve account id
             posts = execute_fetchall('SELECT * FROM posts WHERE account_id = %s ORDER BY post_timestamp desc', (id, ))
             following = execute_fetchall('SELECT count(*) following FROM follow_account WHERE follower_id = %s', (id,))
             followers = execute_fetchall('SELECT count(*) followers FROM follow_account WHERE followee_id = %s', (id,))
@@ -323,6 +323,7 @@ def user(id):
                     school_email = result['school_email']
                     username = result['username']
                     created_timestamp = result['created_timestamp']
+                    school = result['school']
                     if following:
                         following = following[0]['following']
                     else:
@@ -341,7 +342,7 @@ def user(id):
                 else:
                     if check_session('login_id') == account_id: #Check if target account is logged in
                         print(account_id)
-                        return render_template('profile.html', is_owner=True, account_id=account_id, school_email=school_email, username=username, created_timestamp=created_timestamp, posts=posts, is_following=False, following=following, followers=followers, post_no=post_no, is_blocked=False)
+                        return render_template('profile.html', is_owner=True, account_id=account_id, school_email=school_email, username=username, created_timestamp=created_timestamp, posts=posts, is_following=False, following=following, followers=followers, post_no=post_no, is_blocked=False, school=school)
                         print("Account id logged in")
                     else:
                         print("Account id not logged in")
@@ -374,7 +375,7 @@ def user(id):
                         else:
                             is_blocked = False
 
-                        return render_template('profile.html',  account_id=account_id, school_email=school_email, username=username, created_timestamp=created_timestamp, posts=posts, is_following=is_following, following=following, followers=followers, post_no=post_no, is_blocked=is_blocked)
+                        return render_template('profile.html',  account_id=account_id, school_email=school_email, username=username, created_timestamp=created_timestamp, posts=posts, is_following=is_following, following=following, followers=followers, post_no=post_no, is_blocked=is_blocked, school=school)
                     
 
             else: #If account id not exist
@@ -813,7 +814,7 @@ def comments(post_id):
 
             if request.method == 'POST' and form.validate():
                 body = form.body.data
-
+                form = create_comment(formdata=None)
                 sql = "INSERT INTO comments (body, account_id, post_id) VALUES (%s, %s, %s)"
                 val = (body, session['login_id'], post_id)
                 execute_commit(sql, val)

@@ -55,10 +55,16 @@
       <div class="col">
         <div class="dropdown show">
           <a href="#" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><img src="/static/images/more.png" style="width: 22px"></a>
+          {% if post.account_id != session['login_id'] %}
           <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
             <a class="dropdown-item" href="/report-post/{{post.post_id}}">Report post</a>
             <a class="dropdown-item" href="/block/{{post.account_id}}">Block {{post.username}}</a>
           </div>
+          {% else %}
+          <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
+            <a class="dropdown-item" href="/deletepost/{{post.post_id}}">Delete post</a>
+          </div>
+          {% endif %}
         </div>
       </div>
     </div>
