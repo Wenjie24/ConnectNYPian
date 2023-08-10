@@ -30,6 +30,9 @@ class security_questions(Form):
 class report_form(Form):
     reason = SelectField('Reason for reporting:', choices=['Offensive content', 'Spam', "I'm being impersonated", 'Sensitive or disturbing content'], validators=[validators.DataRequired()])
 
+class send_reset_pass_form(Form):
+    email = StringField('School Email', validators=[validators.DataRequired(), validators.regexp('^[a-zA-Z0-9]+@mymail\.nyp\.edu\.sg$', message='Must be a valid xxxxxxx@mymail.nyp.edu.sg')])
+
 class reset_pass_form(Form):
     password = PasswordField('Password', validators=[validators.DataRequired(), validators.regexp('^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])(?=.*[\W_]).{8,64}$', message='Password must contain at least one uppercase letter, one lowercase letter, one digit, and one special character. It should be between 8 and 64 characters in length.')])
 
