@@ -1,5 +1,3 @@
-ignore this --> sql = 'SELECT * FROM posts INNER JOIN accounts on posts.account_id = accounts.account_id ORDER BY posts.post_timestamp desc'
-
 CREATE TABLE IF NOT EXISTS accounts (
     account_id INT NOT NULL AUTO_INCREMENT, 
     school_email VARCHAR(30) UNIQUE, 

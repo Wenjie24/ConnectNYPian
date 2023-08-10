@@ -332,10 +332,6 @@ def confirm_email(token):
 
 
 
-
-
-
-
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if check_login_status():

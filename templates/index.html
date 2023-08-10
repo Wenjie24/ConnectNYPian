@@ -4,14 +4,14 @@
 {% block content %}
 {% from "includes/formHelper.html" import render_field %}
 {% if school_specific == True %}
-<div class="container-fluid" style="margin-bottom: 33px; max-width: 75%; width: 600px">
-  <a href="/"><h4 style="float: left; color: black">For You</h4></a>
-  <a href="/school-specific"><h4 style="float: right; text-decoration:underline; color: black">School-Specific</h4></a>
+<div class="container-fluid" style="margin-bottom: 33px; max-width: 75%; width: 400px">
+  <a href="/"><h4 style="float: left; color: black; font-weight:bold">For You</h4></a>
+  <a href="/school-specific"><h4 style="float: right; text-decoration:underline; color: black; font-weight:bold">School-Specific</h4></a>
 </div>
 {% else %}
-<div class="container-fluid" style="margin-bottom: 33px; max-width: 75%; width: 600px">
-  <a href="/"><h4 style="float: left; text-decoration:underline; color: black">For You</h4></a>
-  <a href="/school-specific"><h4 style="float: right; color: black">School-Specific</h4></a>
+<div class="container-fluid" style="margin-bottom: 33px; max-width: 75%; width: 400px">
+  <a href="/"><h4 style="float: left; text-decoration:underline; color: black; font-weight:bold">For You</h4></a>
+  <a href="/school-specific"><h4 style="float: right; color: black; font-weight:bold">School-Specific</h4></a>
 </div>
 {% endif %}
 <br>
