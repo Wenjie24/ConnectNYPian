@@ -7,7 +7,7 @@ class create_post(Form):
     category = SelectField('', choices=['placeholder choice', 'another placeholder choice'], validators=[validators.DataRequired()], render_kw={'style':'height:45px'})
 
 class create_comment(Form):
-    body = TextAreaField('', render_kw={'placeholder': 'Comment:'}, validators=[validators.DataRequired()])
+    body = TextAreaField('', render_kw={'placeholder': 'Comment:', 'id': 'commentbody'}, validators=[validators.DataRequired()])
 
 class signup_form(Form):
     username = StringField('Username', validators=[validators.regexp('^[A-za-z1-9]+$', message='Username should not contain symbols.'), validators.DataRequired()]) # Regex to allow only string
@@ -32,3 +32,7 @@ class report_form(Form):
 
 class reset_pass_form(Form):
     password = PasswordField('Password', validators=[validators.DataRequired(), validators.regexp('^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])(?=.*[\W_]).{8,64}$', message='Password must contain at least one uppercase letter, one lowercase letter, one digit, and one special character. It should be between 8 and 64 characters in length.')])
+
+class unlock_account_form(Form):
+    qn1_ans = StringField('', validators=[validators.DataRequired()])
+    qn2_ans = StringField('', validators=[validators.DataRequired()])

@@ -9,6 +9,7 @@ from datetime import date, timedelta
 from forms import *
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired
+from functools import wraps
 import pyotp
 import os
 
@@ -167,6 +168,22 @@ def checksecurityquestions():
         print('redirecting')
         return redirect(url_for('create_security_questions'))
     
+def check_security_questions(f):
+    @wraps(f)
+    def wrap(*args, **kwargs):
+        if check_login_status():
+            sql = 'SELECT * FROM security_questions WHERE account_id = %s'
+            val = str(session['login_id']),
+            result = execute_fetchone(sql, val)
+            if result:
+                pass
+            else:
+                return redirect(url_for('create_security_questions'))
+            
+            return f(*args, **kwargs)
+        else: return redirect(url_for('signup'))
+    return wrap
+
 def mergeSort(theList):
     # Check the base case - the list contains a single item
     if len(theList) <= 1:
@@ -231,7 +248,6 @@ def create_alnum_pw(password):
             else:
                 list1.append(i)
 
-    print(list1)
     return ''.join(str(i) for i in list1)
 # END OF EXTERNAL FUNCTIONS
 
@@ -243,16 +259,14 @@ for line in common_passwords:
         common_passwords_list.append(line.rstrip())
 
 common_passwords_list = mergeSort(common_passwords_list)
-print(common_passwords_list)
 
 
 @app.route('/')
+@check_security_questions
 def home():
     # Extract all the post from sql
     if check_login_status(): #Check for login
         print("logged in")
-        if checksecurityquestions() != True:
-            return checksecurityquestions()
         sql = 'SELECT * FROM posts INNER JOIN accounts on posts.account_id = accounts.account_id WHERE posts.account_id NOT IN (SELECT blocked_account_id FROM blocks WHERE blocker_account_id = %s) AND posts.account_id NOT IN (SELECT blocker_account_id FROM blocks WHERE blocked_account_id = %s) ORDER BY posts.post_timestamp desc'
         val = (str(session['login_id']), str(session['login_id']))
         feed = execute_fetchall(sql, val)
@@ -267,12 +281,11 @@ def home():
         return redirect(url_for('signup'))
     
 @app.route('/school-specific')
+@check_security_questions
 def school_home():
     # Extract all the school-specific post from sql
     if check_login_status(): #Check for login
         print("logged in")
-        if checksecurityquestions() != True:
-            return checksecurityquestions()
         school_specific = True
         sql = 'SELECT school FROM students WHERE account_id = %s'
         val = str(session['login_id']),
@@ -291,10 +304,9 @@ def school_home():
         return redirect(url_for('signup'))
 
 @app.route('/user/<int:id>')
+@check_security_questions
 def user(id):
     if check_login_status(): #Check for login status
-        if checksecurityquestions() != True:
-            return checksecurityquestions()
         try:
             result = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s', (id,)) #Try to retrieve account id
             posts = execute_fetchall('SELECT * FROM posts WHERE account_id = %s ORDER BY post_timestamp desc', (id, ))
@@ -544,6 +556,7 @@ def login():
     not_logged_in = False
     account_locked = False
     invalid_pass_or_username = False
+    account_id = None
 
     # If there's a POST request(Form submitted) enter statement.
     if request.method == 'POST' and form.validate(): # If a form is submitted
@@ -634,7 +647,7 @@ def login():
 
 
 
-    return render_template('processes/login.html', form=form, account_locked=account_locked, invalid_pass_or_username=invalid_pass_or_username)
+    return render_template('processes/login.html', form=form, account_locked=account_locked, invalid_pass_or_username=invalid_pass_or_username, account_id=account_id)
 
 @app.route('/logout')
 def logout():
@@ -699,12 +712,11 @@ def reset_pass_confirmed(token):
 
 
 @app.route('/createpost', methods=['GET', 'POST'])
+@check_security_questions
 def createpost():
     if 'login_status' not in session:
         return redirect(url_for('login'))
     
-    if checksecurityquestions() != True:
-            return checksecurityquestions()
     form = create_post(request.form)
     if request.method == 'POST' and form.validate():
         # assign form data to variables
@@ -722,11 +734,10 @@ def createpost():
     return render_template('/processes/createpost.html', form=form)
 
 @app.route('/createlike/<post_id>/')
+@check_security_questions
 def createlike(post_id):
     try:
         if 'login_id' in session and checklike(post_id) == False:
-            if checksecurityquestions() != True:
-                return checksecurityquestions()
             sql = "INSERT INTO likes (account_id, post_id) VALUES (%s, %s)"
             val = (session['login_id'], post_id)
             execute_commit(sql, val)
@@ -739,11 +750,10 @@ def createlike(post_id):
         print("Error creating like: ", e)
 
 @app.route('/removelike/<post_id>')
+@check_security_questions
 def removelike(post_id):
     try:
         if 'login_id' in session:
-            if checksecurityquestions() != True:
-                return checksecurityquestions()
             sql = "DELETE FROM likes WHERE post_id = %s AND account_id = %s"
             val = (post_id, session['login_id'])
             execute_commit(sql, val)
@@ -756,12 +766,11 @@ def removelike(post_id):
         print("Error removing like: ", e)
 
 @app.route('/deletepost/<post_id>')
+@check_security_questions
 def deletepost(post_id):
     try:
         if 'login_id' in session:
             try:
-                if checksecurityquestions() != True:
-                    return checksecurityquestions()
                 sql = 'SELECT account_id FROM posts WHERE post_id = %s'
                 val = (post_id, )
                 account_id = execute_fetchone(sql, val)
@@ -783,14 +792,13 @@ def deletepost(post_id):
         print("Error deleting post: ", e)
 
 @app.route('/comments/<post_id>', methods=['GET', 'POST'])
+@check_security_questions
 def comments(post_id):
     try:
         if 'login_id' not in session:
             return redirect(url_for('login'))
 
         if 'login_id' in session:
-            if checksecurityquestions() != True:
-                return checksecurityquestions()
             sql = 'SELECT * FROM posts INNER JOIN accounts ON posts.account_id = accounts.account_id WHERE posts.post_id = %s'
             val = (str(post_id), )
             post = execute_fetchone(sql, val)
@@ -824,12 +832,11 @@ def comments(post_id):
         print('Error creating comment: ', e)
 
 @app.route('/deletecomment/<post_id>/<comment_id>')
+@check_security_questions
 def deletecomment(post_id, comment_id):
     try:
         if 'login_id' in session:
             try:
-                if checksecurityquestions() != True:
-                    return checksecurityquestions()
                 sql = 'SELECT account_id FROM comments WHERE comment_id = %s'
                 val = (str(comment_id), )
                 account_id = execute_fetchone(sql, val)
@@ -871,11 +878,10 @@ def create_security_questions():
         print("Error creating security qns:", e)
 
 @app.route('/follow/<account_id>')
+@check_security_questions
 def follow_account(account_id):
     try:
         if 'login_id' in session:
-            if checksecurityquestions() != True:
-                return checksecurityquestions()
             sql = 'INSERT INTO follow_account (follower_id, followee_id) VALUES (%s, %s)'
             val = (str(session['login_id']), account_id)
             execute_commit(sql, val)
@@ -889,11 +895,10 @@ def follow_account(account_id):
         print('Error following account:', e)
 
 @app.route('/unfollow/<account_id>')
+@check_security_questions
 def unfollow_account(account_id):
     try:
         if 'login_id' in session:
-            if checksecurityquestions() != True:
-                return checksecurityquestions()
             sql = 'DELETE FROM follow_account WHERE follower_id = %s and followee_id = %s'
             val = (str(session['login_id']), account_id)
             execute_commit(sql, val)
@@ -907,11 +912,10 @@ def unfollow_account(account_id):
         print('Error following account:', e)
 
 @app.route('/block/<account_id>')
+@check_security_questions
 def block(account_id):
     try:
         if 'login_id' in session:
-            if checksecurityquestions() != True:
-                return checksecurityquestions()
             
             if str(session['login_id']) == str(account_id):
                 return redirect(url_for('user', id=account_id, is_blocked=False))
@@ -936,12 +940,10 @@ def block(account_id):
         print('Error blocking account:', e)
 
 @app.route('/unblock/<account_id>')
+@check_security_questions
 def unblock(account_id):
     try:
         if 'login_id' in session:
-            if checksecurityquestions() != True:
-                return checksecurityquestions()
-            
             sql = 'DELETE FROM blocks WHERE blocker_account_id = %s AND blocked_account_id = %s'
             val = (str(session['login_id']), account_id)
             execute_commit(sql, val)
@@ -956,11 +958,10 @@ def unblock(account_id):
         print('Error unblocking account:', e)
 
 @app.route('/report-post/<post_id>', methods=['GET', 'POST'])
+@check_security_questions
 def report_post(post_id):
     try:
         if 'login_id' in session:
-            if checksecurityquestions() != True:
-                return checksecurityquestions()
             form = report_form(request.form)
             if request.method == 'POST' and form.validate():
                 reason = form.reason.data
@@ -975,8 +976,29 @@ def report_post(post_id):
     except Error as e:
         print('Error reporting user:', e)
 
-
-
+@app.route('/unlock-account/<account_id>', methods=['GET', 'POST'])
+def unlock_account(account_id):
+    wrong_answer = None
+    form = unlock_account_form(request.form)
+    sql = 'SELECT * FROM security_questions WHERE account_id = %s'
+    val = str(account_id), 
+    result = execute_fetchone(sql, val)
+    qn1 = result['qn1']
+    qn1_ans = result['qn1_ans']
+    qn2 = result['qn2']
+    qn2_ans = result['qn2_ans']
+    if request.method == 'POST' and form.validate():
+        qn1_given_ans = form.qn1_ans.data
+        qn2_given_ans = form.qn2_ans.data
+        if qn1_given_ans == qn1_ans and qn2_given_ans == qn2_ans:
+            sql = "DELETE FROM account_status WHERE account_id = %s"
+            execute_commit(sql, val)
+            return 'Account has been unlocked, return to login page'
+        else:
+            wrong_answer = True
+            return render_template('/processes/unlock_account.html', form=form, qn1=qn1, qn2=qn2, wrong_answer=wrong_answer, account_id=account_id)
+        
+    return render_template('/processes/unlock_account.html', form=form, qn1=qn1, qn2=qn2, wrong_answer=wrong_answer, account_id=account_id)
 
 
 if __name__ == '__main__':
