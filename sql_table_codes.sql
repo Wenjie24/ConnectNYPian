@@ -17,8 +17,7 @@ CREATE TABLE IF NOT EXISTS verification_token (
     timecreated DATETIME DEFAULT CURRENT_TIMESTAMP(),
 	token_type VARCHAR(10) DEFAULT 'signup',
     used_boolen BOOLEAN DEFAULT FALSE,
-    PRIMARY KEY (account_id, timecreated, token_type),
-    FOREIGN KEY (account_id) REFERENCES accounts(account_id)
+    PRIMARY KEY (account_id, timecreated, token_type)
     );
 
 CREATE TABLE IF NOT EXISTS posts (

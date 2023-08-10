@@ -8,7 +8,7 @@ from mysql.connector import Error
 from datetime import date, timedelta
 from forms import *
 from flask_mail import Mail, Message
-from itsdangerous import URLSafeTimedSerializer, SignatureExpired
+from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 import pyotp
 import os
 
@@ -306,33 +306,37 @@ def confirm_email(token):
     except Exception:
         return 'Unknown error has occurred'
     else:
-
-        if check_session('temp_sign_up_dict'):
-
             #If there's token and is false
             token_detail = execute_fetchone('SELECT token_type, used_boolen FROM verification_token WHERE token = %s', (token,))
             if token_detail['token_type'] == 'signup' and token_detail['used_boolen'] == False:
+                if check_session('temp_sign_up_dict'):
 
-                #Update the table that the token is used
-                execute_commit('UPDATE used_boolen SET used_boolen = %s WHERE token = %s', (True, token))
 
-                try:
-                    dict_value = check_session('temp_sign_up_dict')
-                    hashed_password = dict_value['hashed_password']
-                    email = dict_value['email']
-                    username = dict_value['username']
-                    school = dict_value['school']
 
-                except Exception:
-                    return 'Unknown Error Has Occured'
+                    try:
+                        dict_value = check_session('temp_sign_up_dict')
+                        hashed_password = dict_value['hashed_password']
+                        email = dict_value['email']
+                        username = dict_value['username']
+                        school = dict_value['school']
+
+                    except Exception:
+                        return 'Unknown Error Has Occured'
+                    else:
+                         # Inserting data into account: account_id, email, username, date_created
+                        execute_commit('INSERT INTO accounts (hashed_pass, school_email, username) VALUES (%s, %s, %s)',(hashed_password, email, username))
+                        # Inserting school into sub table
+                        account_id = execute_fetchone('SELECT account_id FROM accounts WHERE username = %s', (username, ))
+                        execute_commit('INSERT INTO students (account_id, school) VALUES (%s, %s)', (account_id['account_id'], school))
+
+                        # Update the table that the token is used
+                        execute_commit('UPDATE verification_token SET used_boolen = True, account_id = %s WHERE token = %s',
+                                        (account_id['account_id'], token))
+
+                        print("Account created")
+                        return "Token Valid, Account created, Please log in to continue."
                 else:
-                     # Inserting data into account: account_id, email, username, date_created
-                    execute_commit('INSERT INTO accounts (hashed_pass, school_email, username) VALUES (%s, %s, %s)',(hashed_password, email, username))
-                    # Inserting school into sub table
-                    account_id = execute_fetchone('SELECT account_id FROM accounts WHERE username = %s', (username, ))
-                    execute_commit('INSERT INTO students (account_id, school) VALUES (%s, %s)', (account_id['account_id'], school))
-                    print("Account created")
-                    return "Token Valid, Account created, Please log in to continue."
+                    return "Session not exist brother"
             else:
                 return 'Token not exist or smth la'
     finally:
@@ -390,7 +394,7 @@ def signup():
                     if token:
                         dict_value = {'username': username, 'hashed_password': hashed_password, 'email': email, 'school': school}
                         create_session('temp_sign_up_dict', dict_value)
-                        execute_commit('INSERT INTO verification_token VALUES (%s, %s, %s)', (token, ))
+                        execute_commit('INSERT INTO verification_token (token, account_id) VALUES (%s, %s)', (token, -1))
                         signup_status = f'An verification token has been sent to {email}'
 
                         message = Message(f'Email verification for {email}', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
@@ -564,58 +568,155 @@ def logout():
     return redirect(url_for('home'))
 
 
-@app.route('/reset_pass')
-def reset_pass():
-    if check_login_status():
-        user_id = check_session('login_id')
+@app.route('/send_reset_pass', methods=['POST','GET'])
+def send_reset_pass():
+    form = send_reset_pass_form(request.form)
+    if request.method == 'POST' and form.validate(): # If reset password form is submitted
+        try:
+            email = request.form['email']
+            user_id_tuple = execute_fetchone('SELECT account_id FROM accounts WHERE school_email = %s',(email,))
 
-        account_details = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s', (user_id,))
-        user_email = account_details['school_email']
+        except Error as e:
+            return f'Error: {e}'
+        else:
 
-        token = serializer.dumps(user_email, salt='reset_pass')
+            if user_id_tuple != None: #If there's a user from the request reset
+
+                #Set the user_id first
+                user_id = user_id_tuple['account_id']
+
+                # Attempt to retrieve all the verification token that user has request today
+                all_token = execute_fetchall(
+                    'SELECT * FROM verification_token WHERE account_id = %s AND token_type = "reset" AND DATE(timecreated) = CURDATE()',
+                    (user_id,))
+
+                # Check if account is locked already
+                account_tuple = execute_fetchone('SELECT * FROM account_status WHERE account_id = %s', (user_id,))
+                if account_tuple != None:
+                    account_locked_status = account_tuple['locked_status'] # 'locked' or 'unlocked'
+                else:
+                    #if there's no account_status in the db, make one and assign unlocked
+                    execute_commit('INSERT INTO account_status (account_id) VALUES (%s)', (user_id,))
+                    account_locked_status = 'unlocked'
+
+                if account_locked_status == 'unlocked': #If the account is not locked, allow changing of password
+                    #if user request less than 2 reset token, allow new token to be sent
+                    if len(all_token) < 2:
+
+                        #make token
+                        token = serializer.dumps(email, salt='reset')
+
+                        #prepare message
+                        message = Message(f'Reset Password', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
+                        verification_link = url_for('reset_pass_confirmed', token=token, _external=True)
+                        message.body = f'Here is your reset Link\n\n{verification_link}\n\nVerification link will expire in 5 minutes.'
+                        #send message
+                        mail.send(message)
+
+                        # note down that user has created a reset request
+                        execute_commit('INSERT INTO verification_token (TOKEN, account_id, token_type) VALUES (%s, %s, %s)', (token, user_id, 'reset'))
+                        return f'reset link send to {email}'
+
+                    else: #If token exceed 2
+
+                        # send last token and label it as sus_reset (suspicious reset)
+
+                        #try to see if there's already a suspicious reset
+                        sus_id_tuple = execute_fetchone('SELECT * FROM verification_token WHERE account_id = %s AND token_type = "sus_reset" and date(timecreated) = CURDATE()', (user_id,))
+                        print(sus_id_tuple)
+                        if sus_id_tuple == None: # if no suspicious reset token, send a token
+
+                            #Set up warning token and send
+                            warning_token = serializer.dumps(email, salt='reset')
+                            warning_verification_link = url_for('reset_pass_confirmed', token=warning_token, _external=True)
+                            warning_message = Message(f'Suspicious Activity Logged', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
+                            warning_message.body = f'We have notice suspicious password request from your account.\n\n If it is not you, Please reset your password IMMEDIATELY \n{warning_verification_link}\n\nSet up 2FA if you have not done so.'
+                            mail.send(warning_message)
+
+                            #note down that sus link is sent
+                            execute_commit('INSERT INTO verification_token (TOKEN, account_id, token_type) VALUES (%s, %s, %s)',
+                                           (warning_token, user_id, 'sus_reset'))
 
 
-        message = Message(f'Reset Password', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
-        verification_link = url_for('reset_pass_confirmed', token=token, _external=True)
-        message.body = f'Here is your reset Link\n\n{verification_link}\n\nVerification link will expire in 5 minutes.'
-        mail.send(message)
+                            return 'sus_link send'
 
-        return f'reset link send to {user_email}'
+                        else: #if there is already a sus token and the user request again, lock the account.
 
-    else:
-        return 'please log in'
+                            locking_message = Message(f'Account Locked for Security Safety', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
+                            locking_message.body = f'We have notice suspicious password request from your account.\n\n To protect your account, we have locked the account. Please contact administrator for support'
+                            mail.send(locking_message)
+
+                            #Lock account
+                            execute_commit('UPDATE account_status SET locked_status = "locked" WHERE account_id = %s',(user_id,))
+
+                            return 'LOCKING UR ACCOUNT AND SEND EMAIL'
+                else:
+                    return 'account locked please contact admin'
+
+
+
+            else:
+                #If there's no user, fake send for security reason
+                return f'Reset link sent to {email}'
+    return render_template('/processes/send_reset_pass.html', form=form)
+
 
 @app.route('/reset_pass_confirmed/<token>', methods=['GET','POST'])
 def reset_pass_confirmed(token):
     try:
-        serializer.loads(token, salt='reset_pass', max_age=300)
+        serialized = serializer.loads(token, salt='reset', max_age=300)
     except SignatureExpired:
         return 'token expired'
+    except BadSignature:
+        return 'wtf is that token brother'
     else:
-
-
         form = reset_pass_form(request.form)
 
         reset_link = url_for('reset_pass_confirmed', token=token, _external=True)
+        print("HIHIH")
 
-        if request.method == 'POST' and form.validate():
-            password = request.form['password']
-            hashed_pass = bcrypt.generate_password_hash(password)
-            sql_query = 'UPDATE accounts SET hashed_pass = %s WHERE account_id = %s'
-            val = (hashed_pass, check_session('login_id'),)
-            result = execute_commit(sql_query, val)
+        # Check if the token is used
+        verification_detail = execute_fetchone('SELECT * FROM verification_token WHERE token = %s', (token,))
+        print(verification_detail['used_boolen'], ' -')
 
-            
-            if result:
-                return 'password updated'
-            else:
-                return 'error while updating password'
+        # If token not used
+        if verification_detail['used_boolen'] == False:
+            if request.method == 'POST' and form.validate():
+
+                # Obtaining USERID from token
+                user_id = verification_detail['account_id']
+
+                #Obtaining account status from user id
+                account_status = execute_fetchone('SELECT * FROM account_status WHERE account_id = %s',(user_id,))
+                locked_status = account_status['locked_status']
+
+                # If account is unlocked
+                if locked_status == 'unlocked':
+
+                    # Get password and hash the password
+                    password = request.form['password']
+                    hashed_pass = bcrypt.generate_password_hash(password)
+
+                    # Update new password
+                    sql_query = 'UPDATE accounts SET hashed_pass = %s WHERE account_id = %s'
+                    val = (hashed_pass, user_id,)
+                    result = execute_commit(sql_query, val)
+
+
+                    if result:
+                        # Set the token status = Used (true)
+                        execute_commit('UPDATE verification_token SET used_boolen = True WHERE token = %s', (token,))
+                        
+                        return 'password updated'
 
 
 
-
+                    else:
+                        return 'error while updating password'
         else:
-            return render_template('/processes/reset_pass.html', form=form, reset_link=reset_link)
+            return 'token is used'
+
+        return render_template('/processes/reset_pass.html', form=form, reset_link=reset_link)
 
 
 @app.route('/createpost', methods=['GET', 'POST'])
