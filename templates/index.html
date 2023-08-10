@@ -4,14 +4,14 @@
 {% block content %}
 {% from "includes/formHelper.html" import render_field %}
 {% if school_specific == True %}
-<div class="container-fluid" style="margin-bottom: 33px; max-width: 75%; width: 600px">
-  <a href="/"><h4 style="float: left; color: black">For You</h4></a>
-  <a href="/school-specific"><h4 style="float: right; text-decoration:underline; color: black">School-Specific</h4></a>
+<div class="container-fluid" style="margin-bottom: 33px; max-width: 75%; width: 400px">
+  <a href="/"><h4 style="float: left; color: black; font-weight:bold">For You</h4></a>
+  <a href="/school-specific"><h4 style="float: right; text-decoration:underline; color: black; font-weight:bold">School-Specific</h4></a>
 </div>
 {% else %}
-<div class="container-fluid" style="margin-bottom: 33px; max-width: 75%; width: 600px">
-  <a href="/"><h4 style="float: left; text-decoration:underline; color: black">For You</h4></a>
-  <a href="/school-specific"><h4 style="float: right; color: black">School-Specific</h4></a>
+<div class="container-fluid" style="margin-bottom: 33px; max-width: 75%; width: 400px">
+  <a href="/"><h4 style="float: left; text-decoration:underline; color: black; font-weight:bold">For You</h4></a>
+  <a href="/school-specific"><h4 style="float: right; color: black; font-weight:bold">School-Specific</h4></a>
 </div>
 {% endif %}
 <br>
@@ -55,10 +55,16 @@
       <div class="col">
         <div class="dropdown show">
           <a href="#" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><img src="/static/images/more.png" style="width: 22px"></a>
+          {% if post.account_id != session['login_id'] %}
           <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
             <a class="dropdown-item" href="/report-post/{{post.post_id}}">Report post</a>
             <a class="dropdown-item" href="/block/{{post.account_id}}">Block {{post.username}}</a>
           </div>
+          {% else %}
+          <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
+            <a class="dropdown-item" href="/deletepost/{{post.post_id}}">Delete post</a>
+          </div>
+          {% endif %}
         </div>
       </div>
     </div>

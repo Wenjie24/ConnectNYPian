@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title%}Unlock Account{% endblock %}
+
+{% block content %}
+{% from "includes/formHelper.html" import render_field %}
+
+<div class="container" style="max-width: 900px;">
+    {% if wrong_answer %}
+    <h2 style="color: red;">Invalid Answer</h2>
+    {% else %}
+    <h2>Unlock Account</h2>
+    {% endif %}
+    <br><br>
+<form action="/unlock-account/{{account_id}}" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    {{ qn1 }}
+    <br>
+    <br>
+    {{ render_field(form.qn1_ans, class='form-control w-50') }}
+    <br><br><br>
+    {{ qn2 }}
+    <br><br>
+    {{ render_field(form.qn2_ans, class='form-control w-50') }}
+    <br><br>
+    <button type="submit" class="btn btn-primary">Submit</button>
+</form>
+
+
+
+
+{% endblock %}
