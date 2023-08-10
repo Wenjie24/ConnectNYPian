@@ -166,7 +166,85 @@ def checksecurityquestions():
     else:
         print('redirecting')
         return redirect(url_for('create_security_questions'))
+    
+def mergeSort(theList):
+    # Check the base case - the list contains a single item
+    if len(theList) <= 1:
+        return theList
+    else:
+        # Compute the midpoint
+        mid = len(theList) // 2
+
+        # Split the list and perform the recursive step
+        leftHalf = mergeSort(theList[:mid])
+        rightHalf = mergeSort(theList[mid:])
+
+        # Merge the two sorted sublists
+        newList = mergeSortedLists(leftHalf, rightHalf)
+        return newList
+
+def mergeSortedLists(a, b):
+    c = []
+    while a != [] and b != []:
+        if a[0] < b[0]:
+            c.append(a[0])
+            a.remove(a[0])
+
+        elif a[0] > b[0]:
+            c.append(b[0])
+            b.remove(b[0])
+
+    while a != [] and b == []:
+        c.append(a[0])
+        a.remove(a[0])
+        
+    while a == [] and b != []:
+        c.append(b[0])
+        b.remove(b[0])
+    
+    return c
+
+def check_common_password(arr, target):
+    low = 0
+    high = len(arr) - 1
+    
+    while low <= high:
+        mid = (low + high) // 2
+        if arr[mid] == target:
+            return True
+        elif arr[mid] < target:
+            low = mid + 1
+        else:
+            high = mid - 1
+   
+    return False
+
+def containsLetterAndNumber(input):
+    return any(x.isalpha() for x in input) and any(x.isnumeric() for x in input)
+
+def create_alnum_pw(password):
+    list1 = []
+    for i in password:
+        if i.isalnum():
+            if i.isalpha():
+                list1.append(i.lower())
+            else:
+                list1.append(i)
+
+    print(list1)
+    return ''.join(str(i) for i in list1)
 # END OF EXTERNAL FUNCTIONS
+
+
+common_passwords_list = [] #list of 10k most common passwords
+common_passwords = open('10k-most-common.txt', 'r')
+for line in common_passwords:
+    if containsLetterAndNumber(line):
+        common_passwords_list.append(line.rstrip())
+
+common_passwords_list = mergeSort(common_passwords_list)
+print(common_passwords_list)
+
 
 @app.route('/')
 def home():
@@ -342,6 +420,7 @@ def signup():
     email_error = None
     signup_status = None
     password_error = None
+    common_password_error = None
 
     form = signup_form(request.form)
     # If there's a POST request(Form submitted) enter statement.
@@ -356,16 +435,26 @@ def signup():
             school = form.school.data
             hashed_password = bcrypt.generate_password_hash(password)  # Hash the password
             email = request.form['email']
+            alnum_pw = create_alnum_pw(password)
+
+            # check for signup errors
             if password == reenterpassword:
                 password_same = True
             else:
                 password_same = False
             username_exist = execute_fetchone('SELECT username FROM accounts WHERE username = %s', (username,))
             email_exist = execute_fetchone('SELECT school_email FROM accounts WHERE school_email = %s', (email,))
+            if password_same == True:
+                if check_common_password(common_passwords_list, alnum_pw) == True:
+                    common_password = True
+                else: common_password = False
+            else: common_password = False
+
+
         except Error as e:
             print("Error trying to retrieve sign up for credential\n", e)
         else:
-            if not username_exist and not email_exist and password_same: # If username and email is avaliable
+            if not username_exist and not email_exist and not common_password and password_same: # If username and email is avaliable
                 if hashed_password:# If password is hashed and ready to use
                     # Try 2FA to confirm email exist
 
@@ -403,6 +492,11 @@ def signup():
                     username_error = False
                     password_error = False
 
+                if common_password:
+                    email_error = False
+                    username_error = False
+                    common_password_error = True
+
                 if username_exist and email_exist: #If both exist
                     username_error = True
                     email_error = True
@@ -430,7 +524,7 @@ def signup():
 
         # DML into MySQLdb
 
-    return render_template('processes/signup.html', form=form, username_error=username_error, email_error=email_error, signup_status=signup_status, password_error=password_error)
+    return render_template('processes/signup.html', form=form, username_error=username_error, email_error=email_error, signup_status=signup_status, password_error=password_error, common_password_error=common_password_error)
 
 @app.route('/admin')
 def admin():
@@ -854,10 +948,6 @@ def unblock(account_id):
             is_blocked = False
         
             return redirect(url_for('user', id=account_id, is_blocked=is_blocked))
-        
-        
-        
-
         
         else:
             return redirect(url_for('login'))

@@ -14,7 +14,7 @@ class signup_form(Form):
     email = StringField('School Email', validators=[validators.DataRequired(), validators.regexp('^[a-zA-Z0-9]+@mymail\.nyp\.edu\.sg$', message='Must be a valid xxxxxxx@mymail.nyp.edu.sg')])
     school = SelectField('School', choices=['School of Applied Science (SAS)', 'School of Business Management (SBM)', 'School of Engineering (SoE)', 'School of Health and Social Sciences (SHSS)', 'School Of Information Technology (SIT)'], validators=[validators.DataRequired()])
     password = PasswordField('Password', validators=[validators.DataRequired(), validators.regexp('^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])(?=.*[\W_]).{8,64}$', message='Password must contain at least one uppercase letter, one lowercase letter, one digit, and one special character. It should be between 8 and 64 characters in length.')])
-    reenterpassword = PasswordField('Re-enter password', validators=[validators.DataRequired(), validators.regexp('^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])(?=.*[\W_]).{8,64}$')])
+    reenterpassword = PasswordField('Re-enter password', validators=[validators.DataRequired(), validators.regexp('^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])(?=.*[\W_]).{8,64}$', message='')])
     recaptcha = RecaptchaField()
 
 class login_form(Form):

@@ -6,6 +6,10 @@
   function onSubmit(token) {
     document.getElementById("demo-form").submit();
   }
+
+  function loading() {
+    document.getElementById("submitbutton").textContent = 'Loading...'
+  }
 </script>
 <main class="container" style="max-width: 470px;">
   <!--
@@ -102,6 +106,17 @@
               {{ render_field(form.reenterpassword, class="form-control", style="border-color: green;") }}
             </div>
             
+            {% elif common_password_error %}
+
+            <div class="mb-3">
+              {{ render_field(form.password, class="form-control") }}
+            </div>
+            <p style="color: red;">Password is too common. Enter a more unique password.</p>
+
+            <div class="mb-3">
+              {{ render_field(form.reenterpassword, class="form-control") }}
+            </div>
+
             {% else %}
             <div class="mb-3">
               {{ render_field(form.password, class="form-control") }}
@@ -121,7 +136,7 @@
             {% endif %}
 
             <p style="font-size: 14px;">Already have an account? <a href="/login" style="font-size:14px">Log In</a></p>
-            <button type="submit" class="btn btn-primary form-control">Sign Up</button>
+            <button type="submit" class="btn btn-primary form-control" id="submitbutton" onclick="loading()">Sign Up</button>
 
           </form>
         </div>
