@@ -1,9 +1,6 @@
-import datetime
-import json
 from flask import Flask, render_template, request, redirect, url_for, session
 from flask_wtf.csrf import CSRFProtect
 import mysql.connector
-from MySQLdb import IntegrityError
 from flask_mysqldb import MySQL
 from flask_bcrypt import Bcrypt
 import MySQLdb.cursors
@@ -13,13 +10,11 @@ from forms import *
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from functools import wraps
-from apscheduler.schedulers.background import BackgroundScheduler
-
 import pyotp
 import os
 
 app = Flask(__name__)
-
+app.permanent_session_lifetime = timedelta(minutes=10)
 
 # Config the Setting
 app.config['SECRET_KEY'] = 'AAjACNiLqAjtjnW8DEonAAwUbd3jnroCdrtrYhlYc'
@@ -37,11 +32,10 @@ app.config['RECAPTCHA_PRIVATE_KEY'] = '6LfegionAAAAAAAqNiLqaVAF_S2k0jtjvgXZ-CK1'
 
 admin_secret_key = '2d9b0f816ffdb77b8e09a46eaf30a1ec9077435a5073cd791aa397729ade5fc7b9a22888c978111461ab1345055b380d3d7571ce6120c8845a10e9f441cededc'
 
-
 #Intialize MYSQL
 mysql = MySQL(app)
 
-#Enable CRSF Protection
+#Enable CRSF
 csrf = CSRFProtect(app)
 
 #Enable 2FA
@@ -57,21 +51,6 @@ app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USE_SSL'] = False
 
 mail = Mail(app)
-
-
-
-#Enable tasked scheduler
-def update_superadmin_sql():
-    print()
-    print('Generating a super admin key')
-    print('Key generated: 1nfA(8nf1q8209M.FAWg81N@!nf19ngUA.sngfv091n3fvg(NA')
-    print('Updating SuperAdmin SQL on', datetime.datetime.now())
-    print()
-
-scheduler = BackgroundScheduler()
-scheduler.add_job(update_superadmin_sql, 'interval', hours=24, id='do_job_1')
-scheduler.start()
-
 
 #Common MYSQL code
 # mycursor.execute('SELECT * FROM %s', (table)) # Execute a query
@@ -210,7 +189,7 @@ def check_security_questions(f):
                 pass
             else:
                 return redirect(url_for('create_security_questions'))
-
+            
             return f(*args, **kwargs)
         else: return redirect(url_for('signup'))
     return wrap
@@ -245,17 +224,17 @@ def mergeSortedLists(a, b):
     while a != [] and b == []:
         c.append(a[0])
         a.remove(a[0])
-
+        
     while a == [] and b != []:
         c.append(b[0])
         b.remove(b[0])
-
+    
     return c
 
 def check_common_password(arr, target):
     low = 0
     high = len(arr) - 1
-
+    
     while low <= high:
         mid = (low + high) // 2
         if arr[mid] == target:
@@ -264,7 +243,7 @@ def check_common_password(arr, target):
             low = mid + 1
         else:
             high = mid - 1
-
+   
     return False
 
 def containsLetterAndNumber(input):
@@ -291,14 +270,6 @@ for line in common_passwords:
 
 common_passwords_list = mergeSort(common_passwords_list)
 
-# DYNAMIC SESSION LIFE
-@app.before_request
-def before_request():
-    #Dynamic session life_time for inactivity
-    if check_login_status():# if logged in
-        app.permanent_session_lifetime = timedelta(minutes=5)
-        print(app.permanent_session_lifetime, ' - session time resetted!')
-#END
 
 @app.errorhandler(404)
 def error_page(e):
@@ -322,7 +293,7 @@ def home():
     else:
         print("Redirecting to sign up")
         return redirect(url_for('signup'))
-
+    
 @app.route('/school-specific')
 @check_security_questions
 def school_home():
@@ -378,7 +349,7 @@ def user(id):
                         followers = 0
                     if post_no:
                         post_no = post_no[0]['posts']
-                    else:
+                    else: 
                         post_no = 0
 
                 except Error as e:
@@ -390,7 +361,7 @@ def user(id):
                         print("Account id logged in")
                     else:
                         print("Account id not logged in")
-
+                        
                         # check if following the user
                         following_list = execute_fetchall('SELECT * FROM follow_account WHERE follower_id = %s', (str(session['login_id']), ))
                         following_list = [item['followee_id'] for item in following_list]
@@ -405,7 +376,7 @@ def user(id):
                                     print("FALSE")
                         else:
                             is_following = False
-
+                        
                         # check if blocked the user
                         blocked_list = execute_fetchall('SELECT * FROM blocks WHERE blocker_account_id = %s', (str(session['login_id']), ))
                         blocked_list = [item['blocked_account_id'] for item in blocked_list]
@@ -420,7 +391,7 @@ def user(id):
                             is_blocked = False
 
                         return render_template('profile.html',  account_id=account_id, school_email=school_email, username=username, created_timestamp=created_timestamp, posts=posts, is_following=is_following, following=following, followers=followers, post_no=post_no, is_blocked=is_blocked, school=school, account_class=account_class)
-
+                    
 
             else: #If account id not exist
                 return 'no such account page'
@@ -442,22 +413,22 @@ def confirm_email(token):
         return 'Unknown error has occurred'
     else:
             #If there's token and is false
-            token_detail = execute_fetchone('SELECT * FROM verification_token WHERE token = %s', (token,))
+            token_detail = execute_fetchone('SELECT token_type, used_boolean FROM verification_token WHERE token = %s', (token,))
             if token_detail['token_type'] == 'signup' and token_detail['used_boolean'] == False:
-                try:
+                if check_session('temp_sign_up_dict'):
 
-                    hashed_password = token_detail['hashed_pass']
-                    email = token_detail['school_email']
-                    username = token_detail['username']
-                    school = token_detail['school']
 
-                    print(email)
-
-                except Exception as e:
-                    return f'Unknown Error Has Occurred\n {e}'
-                else:
 
                     try:
+                        dict_value = check_session('temp_sign_up_dict')
+                        hashed_password = dict_value['hashed_password']
+                        email = dict_value['email']
+                        username = dict_value['username']
+                        school = dict_value['school']
+
+                    except Exception:
+                        return 'Unknown Error Has Occured'
+                    else:
                          # Inserting data into account: account_id, email, username, date_created
                         execute_commit('INSERT INTO accounts (hashed_pass, school_email, username, class) VALUES (%s, %s, %s, %s)',(hashed_password, email, username, 'student'))
                         # Inserting school into sub table
@@ -465,30 +436,20 @@ def confirm_email(token):
                         account_id = account_id_tuple['account_id']
                         execute_commit('INSERT INTO students (account_id, school) VALUES (%s, %s)', (account_id, school))
 
-                    except IntegrityError:
-                        return 'Cant create account. account already exist.'
-                    else:
-                        # Inserting school into sub table
-                        account_id_tuple = execute_fetchone('SELECT account_id FROM accounts WHERE username = %s',
-                                                            (username,))
-                        account_id = account_id_tuple['account_id']
-                        execute_commit('INSERT INTO students (account_id, school) VALUES (%s, %s)',
-                                       (account_id, school))
 
                         print("CURRENT ACCOUNT ID TO BE ADDED IN ACCOUNT STATUS: ", account_id)
 
-                        # Make a account status for him
-                        execute_commit('INSERT INTO account_status (account_id, enabled_2fa) VALUES (%s,"enabled")',
-                                       (account_id,))
+                        #Make a account status for him
+                        execute_commit('INSERT INTO account_status (account_id, enabled_2fa) VALUES (%s,"enabled")', (account_id,))
 
                         # Update the table that the token is used
-                        execute_commit(
-                            'UPDATE verification_token SET used_boolean = True, account_id = %s WHERE token = %s',
-                            (account_id, token))
+                        execute_commit('UPDATE verification_token SET used_boolean = True, account_id = %s WHERE token = %s',
+                                        (account_id, token))
 
                         print("Account created")
                         return "Token Valid, Account created, Please log in to continue."
-
+                else:
+                    return "Session not exist brother"
             else:
                 return 'Token not exist or smth la'
     finally:
@@ -549,11 +510,11 @@ def signup():
                     token = serializer.dumps(email, salt='sign_up')
                     print(f'This is your token:\n{token}')
 
-                    #If there's a token, insert into db with all user value inside (So we can create the account after verifying 2fa in other route)
+                    #If there's a token, create a session with all user value inside (So we can create the account after verifying 2fa in other route)
                     if token:
-
-
-                        execute_commit('INSERT INTO verification_token (token, account_id, username, hashed_pass, school_email, school) VALUES (%s, %s, %s, %s, %s, %s)', (token, -1, username, hashed_password, email, school))
+                        dict_value = {'username': username, 'hashed_password': hashed_password, 'email': email, 'school': school}
+                        create_session('temp_sign_up_dict', dict_value)
+                        execute_commit('INSERT INTO verification_token (token, account_id) VALUES (%s, %s)', (token, -1))
                         signup_status = f'An verification token has been sent to {email}'
 
                         message = Message(f'Email verification for {email}', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
@@ -589,7 +550,7 @@ def signup():
                     username_error = True
                     email_error = True
                     password_error = False
-
+                
                 if not password_same:
                     username_error = False
                     email_error = False
@@ -643,7 +604,7 @@ def login():
                 create_session('login_status', True)
                 create_session('login_id', -1)
                 return redirect(url_for('admin'))
-
+            
 
 
 
@@ -900,17 +861,11 @@ def login_2fa(token):
 
 @app.route('/send_reset_pass', methods=['POST','GET'])
 def send_reset_pass():
-    #This function i made it so that both logged user dont need to key in any form
     form = send_reset_pass_form(request.form)
-    if (request.method == 'POST' and form.validate()) or check_login_status(): # If reset password form is submitted
+    if request.method == 'POST' and form.validate(): # If reset password form is submitted
         try:
-
-            if (request.method == 'POST' and form.validate()):
-                email = request.form['email']
-                user_id_tuple = execute_fetchone('SELECT account_id FROM accounts WHERE school_email = %s',(email,))
-            else:
-                user_id_tuple = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s',(session['login_id'],))
-                email = user_id_tuple['school_email']
+            email = request.form['email']
+            user_id_tuple = execute_fetchone('SELECT account_id FROM accounts WHERE school_email = %s',(email,))
 
         except Error as e:
             return f'Error: {e}'
@@ -984,11 +939,6 @@ def send_reset_pass():
 
                             #Lock account
                             execute_commit('UPDATE account_status SET locked_status = "locked" WHERE account_id = %s',(user_id,))
-
-                            #clear session
-                            remove_session('login_status')
-                            remove_session('login_id')
-                            remove_session('username')
 
                             return 'LOCKING UR ACCOUNT AND SEND EMAIL'
                 else:
@@ -1072,7 +1022,7 @@ def reset_pass_confirmed(token):
 def createpost():
     if 'login_status' not in session:
         return redirect(url_for('login'))
-
+    
     form = create_post(request.form)
     if request.method == 'POST' and form.validate():
         # assign form data to variables
@@ -1117,7 +1067,7 @@ def removelike(post_id):
             val = (post_id, )
             execute_commit(sql, val)
         return redirect(url_for('home'))
-
+    
     except Error as e:
         print("Error removing like: ", e)
 
@@ -1181,7 +1131,7 @@ def comments(post_id):
                 val = (str(post_id), )
                 comments = execute_fetchall(sql, val)
                 return render_template('/processes/comments.html', post=post, liked_posts=liked_posts, form=form, comments=comments)
-
+    
         return render_template('/processes/comments.html', post=post, liked_posts=liked_posts, form=form, comments=comments)
 
     except Error as e:
@@ -1208,7 +1158,7 @@ def deletecomment(post_id, comment_id):
                     val = (post_id, )
                     execute_commit(sql, val)
             return redirect(url_for('comments', post_id=post_id))
-
+    
     except Error as e:
         print('Error deleting comment:', e)
 
@@ -1272,10 +1222,10 @@ def unfollow_account(account_id):
 def block(account_id):
     try:
         if 'login_id' in session:
-
+            
             if str(session['login_id']) == str(account_id):
                 return redirect(url_for('user', id=account_id, is_blocked=False))
-
+            
             sql = 'SELECT * FROM blocks WHERE blocker_account_id = %s AND blocked_account_id = %s'
             val = (str(session['login_id']), account_id)
             blocked = execute_fetchall(sql, val)
@@ -1288,10 +1238,10 @@ def block(account_id):
                 execute_commit(sql, val)
                 is_blocked = True
             return redirect(url_for('user', id=account_id, is_blocked=is_blocked))
-
+        
         else:
             return redirect(url_for('login'))
-
+        
     except Error as e:
         print('Error blocking account:', e)
 
@@ -1304,12 +1254,12 @@ def unblock(account_id):
             val = (str(session['login_id']), account_id)
             execute_commit(sql, val)
             is_blocked = False
-
+        
             return redirect(url_for('user', id=account_id, is_blocked=is_blocked))
-
+        
         else:
             return redirect(url_for('login'))
-
+        
     except Error as e:
         print('Error unblocking account:', e)
 
@@ -1328,7 +1278,7 @@ def report_post(post_id):
             return render_template('/processes/report_post.html', form=form, post_id=post_id)
         else:
             return redirect(url_for('login'))
-
+        
     except Error as e:
         print('Error reporting user:', e)
 
@@ -1337,7 +1287,7 @@ def unlock_account(account_id):
     wrong_answer = None
     form = unlock_account_form(request.form)
     sql = 'SELECT * FROM security_questions WHERE account_id = %s'
-    val = str(account_id),
+    val = str(account_id), 
     result = execute_fetchone(sql, val)
     qn1 = result['qn1']
     qn1_ans = result['qn1_ans']
@@ -1353,7 +1303,7 @@ def unlock_account(account_id):
         else:
             wrong_answer = True
             return render_template('/processes/unlock_account.html', form=form, qn1=qn1, qn2=qn2, wrong_answer=wrong_answer, account_id=account_id)
-
+        
     return render_template('/processes/unlock_account.html', form=form, qn1=qn1, qn2=qn2, wrong_answer=wrong_answer, account_id=account_id)
 
 @app.route('/verify-as-educator', methods=['GET', 'POST'])
@@ -1362,7 +1312,7 @@ def verify_as_educator():
     request_success = False
     form = verify_as_educator_form(request.form)
     sql = 'SELECT * FROM verify_as_educator_request WHERE account_id = %s'
-    val = str(session['login_id']),
+    val = str(session['login_id']), 
     result = execute_fetchall(sql, val)
     if result:
         request_success = True
@@ -1390,7 +1340,7 @@ def admin_login():
             result = execute_fetchone("SELECT * FROM accounts WHERE username = %s AND class = 'administrator'", (username,)) # Getting data from database
         except Error as e:
             print("Unknown error occurred while retrieving user credentials.\n", e)
-
+        
         if result:
             hashed_pass = result['hashed_pass']
             account_id = result['account_id']
@@ -1409,7 +1359,7 @@ def admin_login():
                         sql = 'DELETE FROM account_status WHERE account_id = %s AND failed_attempts < 5'
                         val = session['login_id'],
                         execute_commit(sql, val)
-
+                    
                     except Error as e:
                         print('Admin Login Failed')
                     else:
@@ -1417,7 +1367,7 @@ def admin_login():
                         return redirect(url_for('admin'))
                 else:
                     account_locked = True
-
+            
             elif bcrypt.check_password_hash(hashed_pass, password) == False:
                     sql = 'SELECT * FROM account_status WHERE account_id = %s'
                     val = account_id,
@@ -1458,10 +1408,10 @@ def superadmin_login():
             create_session('admin_status', True)
             create_session('superadmin_status', True)
             return redirect(url_for('superadmin'))
-
+        
         else:
             invalid_pass_or_username = True
-
+    
     return render_template('/processes/superadmin_login.html', form=form, invalid_pass_or_username=invalid_pass_or_username)
 
 @app.route('/admin')
@@ -1483,5 +1433,3 @@ if __name__ == '__main__':
 #Security Issue
 #1) account cant be locked if it does not exist
 #2) Check database before performing query instead of session
-#3) check for no duplicate before allowing sign up.
-#4) user still can perform action even after resetting password (because we never keep changing for password change)

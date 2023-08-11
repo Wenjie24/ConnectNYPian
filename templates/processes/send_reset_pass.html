@@ -1,31 +1,16 @@
-{% extends 'base.html' %}
-{% block title%}Login{% endblock %}
-
+{% block title%}Reset Pass{% endblock %}
 {% block content %}
 {% from "includes/formHelper.html" import render_field %}
-<br>
-<main class="container" style="margin-top: 50px;">
-    <div class="row justify-content-center">
-        <div class="col-4">
-            <div class="card">
-                <div class="card-body">
-                    <h4 class="card-title" style="font-weight: bold;"> Reset Password </h4>
+<form action="{{reset_link}}" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
-                    <form action="{{reset_link}}" method="POST">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-
-                        <div class="form-group">
-                            {{ render_field(form.email, class="form-control") }}
-                        </div>
-                        <div class="form-group" style="margin-top: 20px;">
-                            <button type="submit" class="btn btn-primary">
-                                Request for reset
-                            </button>
-                        </div>
-                    </form >
-                </div>
-            </div>
-        </div>
+     <div class="form-group">
+         {{ render_field(form.email, class="form-control") }}
+     </div>
+    <div class="form-group">
+                  <button type="submit" class="btn btn-primary">
+                      Request for reset
+                  </button>
     </div>
-</main>
+</form >
 {% endblock %}
