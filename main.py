@@ -889,11 +889,17 @@ def login_2fa(token):
 
 @app.route('/send_reset_pass', methods=['POST','GET'])
 def send_reset_pass():
+    #This function i made it so that both logged user dont need to key in any form
     form = send_reset_pass_form(request.form)
-    if request.method == 'POST' and form.validate(): # If reset password form is submitted
+    if (request.method == 'POST' and form.validate()) or check_login_status(): # If reset password form is submitted
         try:
-            email = request.form['email']
-            user_id_tuple = execute_fetchone('SELECT account_id FROM accounts WHERE school_email = %s',(email,))
+
+            if (request.method == 'POST' and form.validate()):
+                email = request.form['email']
+                user_id_tuple = execute_fetchone('SELECT account_id FROM accounts WHERE school_email = %s',(email,))
+            else:
+                user_id_tuple = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s',(session['login_id'],))
+                email = user_id_tuple['school_email']
 
         except Error as e:
             return f'Error: {e}'
@@ -967,6 +973,11 @@ def send_reset_pass():
 
                             #Lock account
                             execute_commit('UPDATE account_status SET locked_status = "locked" WHERE account_id = %s',(user_id,))
+
+                            #clear session
+                            remove_session('login_status')
+                            remove_session('login_id')
+                            remove_session('username')
 
                             return 'LOCKING UR ACCOUNT AND SEND EMAIL'
                 else:
