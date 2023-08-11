@@ -1,5 +1,5 @@
 
-ignore this --> sql = 'SELECT * FROM posts INNER JOIN accounts on posts.account_id = accounts.account_id ORDER BY posts.post_timestamp desc'
+-- ignore this --> sql = 'SELECT * FROM posts INNER JOIN accounts on posts.account_id = accounts.account_id ORDER BY posts.post_timestamp desc'
 
 CREATE TABLE IF NOT EXISTS accounts (
     account_id INT NOT NULL AUTO_INCREMENT,
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS verification_token (
     account_id INT NOT NULL,
     timecreated DATETIME DEFAULT CURRENT_TIMESTAMP(),
 	token_type VARCHAR(10) DEFAULT 'signup',
-    used_boolen BOOLEAN DEFAULT FALSE,
+    used_boolean BOOLEAN DEFAULT FALSE,
     PRIMARY KEY (account_id, timecreated, token_type)
     );
 
@@ -121,9 +121,10 @@ CREATE TABLE IF NOT EXISTS follow_account (
 
 CREATE TABLE IF NOT EXISTS account_status (
 	account_id INT NOT NULL, 
-    failed_attempts INT, 
-    ongoing_timer VARCHAR(20), 
-    locked_status VARCHAR(20) NOT NULL DEFAULT 'unlocked', 
+    failed_attempts INT DEFAULT 0,
+    ongoing_timer VARCHAR(20) DEFAULT 0,
+    locked_status VARCHAR(20) NOT NULL DEFAULT 'unlocked',
+    enabled_2fa varchar(20) DEFAULT 'disabled', -- enabled/disabled
     PRIMARY KEY (account_id), 
     FOREIGN KEY (account_id) REFERENCES accounts(account_id)
     );
