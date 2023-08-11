@@ -1,5 +1,5 @@
 import datetime
-
+import json
 from flask import Flask, render_template, request, redirect, url_for, session
 from flask_wtf.csrf import CSRFProtect
 import mysql.connector
@@ -284,8 +284,9 @@ common_passwords_list = mergeSort(common_passwords_list)
 @app.before_request
 def before_request():
     #Dynamic session life_time for inactivity
-    app.permanent_session_lifetime = timedelta(minutes=5)
-    print(app.permanent_session_lifetime, ' - session time resetted!')
+    if check_login_status():# if logged in
+        app.permanent_session_lifetime = timedelta(minutes=5)
+        print(app.permanent_session_lifetime, ' - session time resetted!')
 #END
 
 @app.errorhandler(404)
@@ -429,43 +430,40 @@ def confirm_email(token):
         return 'Unknown error has occurred'
     else:
             #If there's token and is false
-            token_detail = execute_fetchone('SELECT token_type, used_boolean FROM verification_token WHERE token = %s', (token,))
+            token_detail = execute_fetchone('SELECT * FROM verification_token WHERE token = %s', (token,))
             if token_detail['token_type'] == 'signup' and token_detail['used_boolean'] == False:
-                if check_session('temp_sign_up_dict'):
+                try:
 
+                    hashed_password = token_detail['hashed_pass']
+                    email = token_detail['school_email']
+                    username = token_detail['username']
+                    school = token_detail['school']
 
+                    print(email)
 
-                    try:
-                        dict_value = check_session('temp_sign_up_dict')
-                        hashed_password = dict_value['hashed_password']
-                        email = dict_value['email']
-                        username = dict_value['username']
-                        school = dict_value['school']
-
-                    except Exception:
-                        return 'Unknown Error Has Occured'
-                    else:
-                         # Inserting data into account: account_id, email, username, date_created
-                        execute_commit('INSERT INTO accounts (hashed_pass, school_email, username) VALUES (%s, %s, %s)',(hashed_password, email, username))
-                        # Inserting school into sub table
-                        account_id_tuple = execute_fetchone('SELECT account_id FROM accounts WHERE username = %s', (username, ))
-                        account_id = account_id_tuple['account_id']
-                        execute_commit('INSERT INTO students (account_id, school) VALUES (%s, %s)', (account_id, school))
-
-
-                        print("CURRENT ACCOUNT ID TO BE ADDED IN ACCOUNT STATUS: ", account_id)
-
-                        #Make a account status for him
-                        execute_commit('INSERT INTO account_status (account_id, enabled_2fa) VALUES (%s,"enabled")', (account_id,))
-
-                        # Update the table that the token is used
-                        execute_commit('UPDATE verification_token SET used_boolean = True, account_id = %s WHERE token = %s',
-                                        (account_id, token))
-
-                        print("Account created")
-                        return "Token Valid, Account created, Please log in to continue."
+                except Exception as e:
+                    return f'Unknown Error Has Occurred\n {e}'
                 else:
-                    return "Session not exist brother"
+                     # Inserting data into account: account_id, email, username, date_created
+                    execute_commit('INSERT INTO accounts (hashed_pass, school_email, username) VALUES (%s, %s, %s)',(hashed_password, email, username))
+                    # Inserting school into sub table
+                    account_id_tuple = execute_fetchone('SELECT account_id FROM accounts WHERE username = %s', (username, ))
+                    account_id = account_id_tuple['account_id']
+                    execute_commit('INSERT INTO students (account_id, school) VALUES (%s, %s)', (account_id, school))
+
+
+                    print("CURRENT ACCOUNT ID TO BE ADDED IN ACCOUNT STATUS: ", account_id)
+
+                    #Make a account status for him
+                    execute_commit('INSERT INTO account_status (account_id, enabled_2fa) VALUES (%s,"enabled")', (account_id,))
+
+                    # Update the table that the token is used
+                    execute_commit('UPDATE verification_token SET used_boolean = True, account_id = %s WHERE token = %s',
+                                    (account_id, token))
+
+                    print("Account created")
+                    return "Token Valid, Account created, Please log in to continue."
+
             else:
                 return 'Token not exist or smth la'
     finally:
@@ -526,11 +524,11 @@ def signup():
                     token = serializer.dumps(email, salt='sign_up')
                     print(f'This is your token:\n{token}')
 
-                    #If there's a token, create a session with all user value inside (So we can create the account after verifying 2fa in other route)
+                    #If there's a token, insert into db with all user value inside (So we can create the account after verifying 2fa in other route)
                     if token:
-                        dict_value = {'username': username, 'hashed_password': hashed_password, 'email': email, 'school': school}
-                        create_session('temp_sign_up_dict', dict_value)
-                        execute_commit('INSERT INTO verification_token (token, account_id) VALUES (%s, %s)', (token, -1))
+
+
+                        execute_commit('INSERT INTO verification_token (token, account_id, username, hashed_pass, school_email, school) VALUES (%s, %s, %s, %s, %s, %s)', (token, -1, username, hashed_password, email, school))
                         signup_status = f'An verification token has been sent to {email}'
 
                         message = Message(f'Email verification for {email}', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
@@ -1334,3 +1332,4 @@ if __name__ == '__main__':
 #Security Issue
 #1) account cant be locked if it does not exist
 #2) Check database before performing query instead of session
+#3) check for no duplicate before allowing sign up.
