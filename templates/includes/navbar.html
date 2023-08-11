@@ -82,7 +82,7 @@
 <br>
 <br>
 <br>
-{% if 'login_id' in session %}
+{% if 'login_id' in session and 'admin_status' not in session %}
 <div class="col fixed-top bg-light lead navbar-collapse" style="height: 1000px; max-width: 21%; z-index: 1; outline-style:solid; outline-color:grey; outline-width:1px;">
     <div style="float: right; margin-right: 15px">
     <ul class="navbar-nav" style="margin-top:80px;margin-right: 50px; width:100%">

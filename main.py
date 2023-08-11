@@ -158,20 +158,30 @@ def checklockedstatus(account_id):
     except TypeError:
         return False
 
-def checksecurityquestions():
-    sql = 'SELECT * FROM security_questions WHERE account_id = %s'
-    val = str(session['login_id']),
-    result = execute_fetchone(sql, val)
-    if result:
-        return True
-    else:
-        print('redirecting')
-        return redirect(url_for('create_security_questions'))
-    
+def admin_login_required(f):
+    @wraps(f)
+    def wrap(*args, **kwargs):
+        if 'admin_status' in session:
+            pass
+        else:
+            return redirect(url_for('admin_login'))
+        return f(*args, **kwargs)
+    return wrap
+
+def superadmin_login_required(f):
+    @wraps(f)
+    def wrap(*args, **kwargs):
+        if 'admin_status' in session and 'superadmin_status' in session:
+            pass
+        else:
+            return redirect(url_for('superadmin_login'))
+        return f(*args, **kwargs)
+    return wrap
+
 def check_security_questions(f):
     @wraps(f)
     def wrap(*args, **kwargs):
-        if check_login_status():
+        if check_login_status() and 'admin_status' not in session:
             sql = 'SELECT * FROM security_questions WHERE account_id = %s'
             val = str(session['login_id']),
             result = execute_fetchone(sql, val)
@@ -324,6 +334,7 @@ def user(id):
                     username = result['username']
                     created_timestamp = result['created_timestamp']
                     school = result['school']
+                    account_class = result['class']
                     if following:
                         following = following[0]['following']
                     else:
@@ -342,7 +353,7 @@ def user(id):
                 else:
                     if check_session('login_id') == account_id: #Check if target account is logged in
                         print(account_id)
-                        return render_template('profile.html', is_owner=True, account_id=account_id, school_email=school_email, username=username, created_timestamp=created_timestamp, posts=posts, is_following=False, following=following, followers=followers, post_no=post_no, is_blocked=False, school=school)
+                        return render_template('profile.html', is_owner=True, account_id=account_id, school_email=school_email, username=username, created_timestamp=created_timestamp, posts=posts, is_following=False, following=following, followers=followers, post_no=post_no, is_blocked=False, school=school, account_class=account_class)
                         print("Account id logged in")
                     else:
                         print("Account id not logged in")
@@ -375,7 +386,7 @@ def user(id):
                         else:
                             is_blocked = False
 
-                        return render_template('profile.html',  account_id=account_id, school_email=school_email, username=username, created_timestamp=created_timestamp, posts=posts, is_following=is_following, following=following, followers=followers, post_no=post_no, is_blocked=is_blocked, school=school)
+                        return render_template('profile.html',  account_id=account_id, school_email=school_email, username=username, created_timestamp=created_timestamp, posts=posts, is_following=is_following, following=following, followers=followers, post_no=post_no, is_blocked=is_blocked, school=school, account_class=account_class)
                     
 
             else: #If account id not exist
@@ -415,7 +426,7 @@ def confirm_email(token):
                         return 'Unknown Error Has Occured'
                     else:
                          # Inserting data into account: account_id, email, username, date_created
-                        execute_commit('INSERT INTO accounts (hashed_pass, school_email, username) VALUES (%s, %s, %s)',(hashed_password, email, username))
+                        execute_commit('INSERT INTO accounts (hashed_pass, school_email, username, class) VALUES (%s, %s, %s, %s)',(hashed_password, email, username, 'student'))
                         # Inserting school into sub table
                         account_id = execute_fetchone('SELECT account_id FROM accounts WHERE username = %s', (username, ))
                         execute_commit('INSERT INTO students (account_id, school) VALUES (%s, %s)', (account_id['account_id'], school))
@@ -553,12 +564,6 @@ def signup():
 
     return render_template('processes/signup.html', form=form, username_error=username_error, email_error=email_error, signup_status=signup_status, password_error=password_error, common_password_error=common_password_error)
 
-@app.route('/admin')
-def admin():
-    print("admin!!")
-    return render_template('processes/admin.html')
-
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if check_login_status():
@@ -669,6 +674,8 @@ def logout():
     remove_session('login_status')
     remove_session('login_id')
     remove_session('username')
+    remove_session('admin_status')
+    remove_session('superadmin_status')
     return redirect(url_for('home'))
 
 
@@ -1112,6 +1119,125 @@ def unlock_account(account_id):
         
     return render_template('/processes/unlock_account.html', form=form, qn1=qn1, qn2=qn2, wrong_answer=wrong_answer, account_id=account_id)
 
+@app.route('/verify-as-educator', methods=['GET', 'POST'])
+@check_security_questions
+def verify_as_educator():
+    request_success = False
+    form = verify_as_educator_form(request.form)
+    sql = 'SELECT * FROM verify_as_educator_request WHERE account_id = %s'
+    val = str(session['login_id']), 
+    result = execute_fetchall(sql, val)
+    if result:
+        request_success = True
+
+    if request.method == 'POST' and form.validate():
+        employee_id = form.employee_id.data
+        department = form.department.data
+        sql = 'INSERT INTO verify_as_educator_request (account_id, employee_id, department) VALUES (%s, %s, %s)'
+        val = (str(session['login_id']), employee_id, department)
+        execute_commit(sql, val)
+        request_success = True
+    return render_template('/processes/verify_as_educator.html', form=form, request_success=request_success)
+
+
+@app.route('/admin-login', methods=['GET', 'POST'])
+def admin_login():
+    form = login_form(request.form)
+    account_locked = False
+    invalid_pass_or_username = False
+
+    if request.method == 'POST' and form.validate():
+        try:
+            username = request.form['username']
+            password = request.form['password']
+            result = execute_fetchone("SELECT * FROM accounts WHERE username = %s AND class = 'administrator'", (username,)) # Getting data from database
+        except Error as e:
+            print("Unknown error occurred while retrieving user credentials.\n", e)
+        
+        if result:
+            hashed_pass = result['hashed_pass']
+            account_id = result['account_id']
+            username = result['username']
+            #If able to retrieve, continue
+            # Checking if the there's a result from the sql query and checking the value of both hash function
+            if bcrypt.check_password_hash(hashed_pass, password):
+                if checklockedstatus(account_id) == False:
+                    try:
+                        create_session('login_status', True)
+                        create_session('login_id', account_id)
+                        create_session('username', username)
+                        create_session('admin_status', True)
+
+                        #Reset account status
+                        sql = 'DELETE FROM account_status WHERE account_id = %s AND failed_attempts < 5'
+                        val = session['login_id'],
+                        execute_commit(sql, val)
+                    
+                    except Error as e:
+                        print('Admin Login Failed')
+                    else:
+                        print('Admin Login Success')
+                        return redirect(url_for('admin'))
+                else:
+                    account_locked = True
+            
+            elif bcrypt.check_password_hash(hashed_pass, password) == False:
+                    sql = 'SELECT * FROM account_status WHERE account_id = %s'
+                    val = account_id,
+
+                    account_status = execute_fetchone(sql, val)
+                    if account_status:
+                        sql = 'UPDATE account_status SET failed_attempts = failed_attempts + 1 WHERE account_id = %s'
+                        execute_commit(sql, val)
+
+                        failed_account = execute_fetchone('SELECT failed_attempts FROM account_status WHERE account_id = %s', (account_id,))
+                        print(failed_account)
+                        if int(failed_account['failed_attempts']) >= 5:
+                            sql = 'UPDATE account_status SET locked_status = %s WHERE account_id = %s'
+                            val = ('locked', account_id)
+                            execute_commit(sql, val)
+                            print('account with account id of:', account_id, 'has been locked')
+                            # account locked
+                            account_locked = True
+                    else:
+                        sql = 'INSERT INTO account_status (account_id, failed_attempts) VALUES (%s, 1)'
+                        execute_commit(sql, val)
+
+            invalid_pass_or_username = True
+
+    return render_template('/processes/admin_login.html', form=form, account_locked=account_locked, invalid_pass_or_username=invalid_pass_or_username)
+
+@app.route('/superadmin-login', methods=['GET', 'POST'])
+def superadmin_login():
+    invalid_pass_or_username = False
+    form = login_form(request.form)
+    if request.method == 'POST' and form.validate():
+        username = form.username.data
+        secret_key = form.password.data
+        if username == 'superadmin' and secret_key == admin_secret_key:
+            create_session('login_status', True)
+            create_session('login_id', -1)
+            create_session('username', username)
+            create_session('admin_status', True)
+            create_session('superadmin_status', True)
+            return redirect(url_for('superadmin'))
+        
+        else:
+            invalid_pass_or_username = True
+    
+    return render_template('/processes/superadmin_login.html', form=form, invalid_pass_or_username=invalid_pass_or_username)
+
+@app.route('/admin')
+@admin_login_required
+def admin():
+    locked_accounts = execute_fetchall("SELECT * FROM account_status WHERE locked_status = 'locked'")
+    verify_as_educator_requests = execute_fetchall("SELECT * FROM verify_as_educator_request")
+    return render_template('processes/admin.html', locked_accounts=locked_accounts, verify_as_educator_requests=verify_as_educator_requests)
+
+@app.route('/superadmin')
+@superadmin_login_required
+def superadmin():
+    return render_template('/processes/superadmin.html')
 
 if __name__ == '__main__':
     app.run(debug=True)

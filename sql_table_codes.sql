@@ -1,12 +1,10 @@
-
-ignore this --> sql = 'SELECT * FROM posts INNER JOIN accounts on posts.account_id = accounts.account_id ORDER BY posts.post_timestamp desc'
-
 CREATE TABLE IF NOT EXISTS accounts (
     account_id INT NOT NULL AUTO_INCREMENT,
     school_email VARCHAR(30) UNIQUE,
     username VARCHAR(30) UNIQUE,
     hashed_pass VARCHAR(255),
     created_timestamp DATETIME DEFAULT CURRENT_TIMESTAMP(),
+    class VARCHAR(30) NOT NULL,
     PRIMARY KEY (account_id),
     UNIQUE (account_id, username, school_email));
 
@@ -18,6 +16,16 @@ CREATE TABLE IF NOT EXISTS verification_token (
     used_boolen BOOLEAN DEFAULT FALSE,
     PRIMARY KEY (account_id, timecreated, token_type)
     );
+
+CREATE TABLE IF NOT EXISTS verify_as_educator_request (
+	account_id INT NOT NULL,
+    employee_id VARCHAR(20) NOT NULL,
+    department VARCHAR(100) NOT NULL,
+    request_timestamp DATETIME DEFAULT CURRENT_TIMESTAMP(),
+    PRIMARY KEY (account_id),
+    FOREIGN KEY (account_id) REFERENCES accounts(account_id),
+    UNIQUE (account_id, employee_id)
+);
 
 CREATE TABLE IF NOT EXISTS posts (
 	post_id INT NOT NULL AUTO_INCREMENT,

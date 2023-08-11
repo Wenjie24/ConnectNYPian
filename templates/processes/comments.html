@@ -9,7 +9,7 @@
   }
 </script>
 <main class="container-fluid w-75" style="max-width:800px; width: 90%;">
-    <div class="bg-light p-3 rounded">
+    <div class="bg-light p-3 rounded card" style="border-color: white ;">
         <div class="row">
           <div class="col">
         <a href="/user/{{post.account_id}}" style="text-decoration: none; color: black;">
@@ -77,7 +77,7 @@
     <hr>
     <br>
     {% for comment in comments %}
-      <div class="bg-light p-3 rounded">
+      <div class="bg-light p-3 rounded card" style="border-color: white ;">
         <div>
         <img src="/static/images/person-circle.svg" alt="avatar" class="rounded-circle img-fluid" style="width: 30px; float: left; margin-right: 10px">
         <div class="row">
@@ -85,7 +85,7 @@
         <p style="font-size: 20px;">{{comment.username}}</p>
         </div>
         {% if comment.account_id == session['login_id'] %}
-        <div style="float: right; width: 50px">
+        <div style="float: right; width: 40px">
           <a href="/deletecomment/{{post.post_id}}/{{comment.comment_id}}" style="color: white"><img src="/static/images/delete.svg" width="20px"></a>
         </div>
         {% endif %}

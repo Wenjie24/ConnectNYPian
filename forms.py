@@ -39,3 +39,7 @@ class reset_pass_form(Form):
 class unlock_account_form(Form):
     qn1_ans = StringField('', validators=[validators.DataRequired()])
     qn2_ans = StringField('', validators=[validators.DataRequired()])
+
+class verify_as_educator_form(Form):
+    employee_id = StringField('Employee ID', validators=[validators.regexp('^[A-za-z1-9]+$', message='Username should not contain symbols.'), validators.DataRequired()])
+    department = SelectField('Department', choices=['School of Applied Science (SAS)', 'School of Business Management (SBM)', 'School of Engineering (SoE)', 'School of Health and Social Sciences (SHSS)', 'School Of Information Technology (SIT)', 'Finance (FN)', 'Human Resource (HR)', 'Student Care and Guidance (SCG)'], validators=[validators.DataRequired()])

@@ -9,6 +9,7 @@
 
   function loading() {
     document.getElementById("submitbutton").textContent = 'Loading...'
+    document.getElementById('loadingicon').hidden = false
   }
 </script>
 <main class="container" style="max-width: 470px;">
@@ -52,7 +53,7 @@
     <div class="">
       <div class="card">
         <div class="card-body">
-          <h4 class="card-title" style="font-weight: bold;">Account Sign up</h4>
+          <h4 class="card-title" style="font-weight: bold;">Account Sign up<img src="/static/images/loading_icon.gif" id="loadingicon" width="80px" hidden="true"></h4>
           <br>
           <form action="/signup" method="POST">
             {{ form.csrf_token }}
