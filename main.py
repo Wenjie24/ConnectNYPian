@@ -1,3 +1,5 @@
+import datetime
+
 from flask import Flask, render_template, request, redirect, url_for, session
 from flask_wtf.csrf import CSRFProtect
 import mysql.connector
@@ -10,11 +12,13 @@ from forms import *
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from functools import wraps
+from apscheduler.schedulers.background import BackgroundScheduler
+
 import pyotp
 import os
 
 app = Flask(__name__)
-app.permanent_session_lifetime = timedelta(minutes=10)
+
 
 # Config the Setting
 app.config['SECRET_KEY'] = 'AAjACNiLqAjtjnW8DEonAAwUbd3jnroCdrtrYhlYc'
@@ -32,10 +36,11 @@ app.config['RECAPTCHA_PRIVATE_KEY'] = '6LfegionAAAAAAAqNiLqaVAF_S2k0jtjvgXZ-CK1'
 
 admin_secret_key = '2d9b0f816ffdb77b8e09a46eaf30a1ec9077435a5073cd791aa397729ade5fc7b9a22888c978111461ab1345055b380d3d7571ce6120c8845a10e9f441cededc'
 
+
 #Intialize MYSQL
 mysql = MySQL(app)
 
-#Enable CRSF
+#Enable CRSF Protection
 csrf = CSRFProtect(app)
 
 #Enable 2FA
@@ -51,6 +56,21 @@ app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USE_SSL'] = False
 
 mail = Mail(app)
+
+
+
+#Enable tasked scheduler
+def update_superadmin_sql():
+    print()
+    print('Generating a super admin key')
+    print('Key generated: 1nfA(8nf1q8209M.FAWg81N@!nf19ngUA.sngfv091n3fvg(NA')
+    print('Updating SuperAdmin SQL on', datetime.datetime.now())
+    print()
+
+scheduler = BackgroundScheduler()
+scheduler.add_job(update_superadmin_sql, 'interval', hours=24, id='do_job_1')
+scheduler.start()
+
 
 #Common MYSQL code
 # mycursor.execute('SELECT * FROM %s', (table)) # Execute a query
@@ -260,6 +280,13 @@ for line in common_passwords:
 
 common_passwords_list = mergeSort(common_passwords_list)
 
+# DYNAMIC SESSION LIFE
+@app.before_request
+def before_request():
+    #Dynamic session life_time for inactivity
+    app.permanent_session_lifetime = timedelta(minutes=5)
+    print(app.permanent_session_lifetime, ' - session time resetted!')
+#END
 
 @app.errorhandler(404)
 def error_page(e):
