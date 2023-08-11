@@ -1354,3 +1354,4 @@ if __name__ == '__main__':
 #1) account cant be locked if it does not exist
 #2) Check database before performing query instead of session
 #3) check for no duplicate before allowing sign up.
+#4) user still can perform action even after resetting password (because we never keep changing for password change)
