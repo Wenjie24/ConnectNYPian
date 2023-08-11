@@ -8,7 +8,7 @@ from mysql.connector import Error
 from datetime import date, timedelta
 from forms import *
 from flask_mail import Mail, Message
-from itsdangerous import URLSafeTimedSerializer, SignatureExpired
+from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from functools import wraps
 import pyotp
 import os
@@ -271,6 +271,10 @@ for line in common_passwords:
 common_passwords_list = mergeSort(common_passwords_list)
 
 
+@app.errorhandler(404)
+def error_page(e):
+    return 'This is a error page la fuck, if you want see debug ownself comment out the @app.errorhandler(404)'
+
 @app.route('/')
 @check_security_questions
 def home():
@@ -409,8 +413,8 @@ def confirm_email(token):
         return 'Unknown error has occurred'
     else:
             #If there's token and is false
-            token_detail = execute_fetchone('SELECT token_type, used_boolen FROM verification_token WHERE token = %s', (token,))
-            if token_detail['token_type'] == 'signup' and token_detail['used_boolen'] == False:
+            token_detail = execute_fetchone('SELECT token_type, used_boolean FROM verification_token WHERE token = %s', (token,))
+            if token_detail['token_type'] == 'signup' and token_detail['used_boolean'] == False:
                 if check_session('temp_sign_up_dict'):
 
 
@@ -428,12 +432,19 @@ def confirm_email(token):
                          # Inserting data into account: account_id, email, username, date_created
                         execute_commit('INSERT INTO accounts (hashed_pass, school_email, username, class) VALUES (%s, %s, %s, %s)',(hashed_password, email, username, 'student'))
                         # Inserting school into sub table
-                        account_id = execute_fetchone('SELECT account_id FROM accounts WHERE username = %s', (username, ))
-                        execute_commit('INSERT INTO students (account_id, school) VALUES (%s, %s)', (account_id['account_id'], school))
+                        account_id_tuple = execute_fetchone('SELECT account_id FROM accounts WHERE username = %s', (username, ))
+                        account_id = account_id_tuple['account_id']
+                        execute_commit('INSERT INTO students (account_id, school) VALUES (%s, %s)', (account_id, school))
+
+
+                        print("CURRENT ACCOUNT ID TO BE ADDED IN ACCOUNT STATUS: ", account_id)
+
+                        #Make a account status for him
+                        execute_commit('INSERT INTO account_status (account_id, enabled_2fa) VALUES (%s,"enabled")', (account_id,))
 
                         # Update the table that the token is used
-                        execute_commit('UPDATE verification_token SET used_boolen = True, account_id = %s WHERE token = %s',
-                                        (account_id['account_id'], token))
+                        execute_commit('UPDATE verification_token SET used_boolean = True, account_id = %s WHERE token = %s',
+                                        (account_id, token))
 
                         print("Account created")
                         return "Token Valid, Account created, Please log in to continue."
@@ -610,22 +621,57 @@ def login():
                 if bcrypt.check_password_hash(hashed_pass, password):
                     if checklockedstatus(account_id) == False:
                         try:
-                            #If login success, try to create session for the user
-                            create_session('login_status', True)
-                            create_session('login_id', account_id)
-                            create_session('username', username)
-                            session.permanent = True
+                            #If login success, Check if account has enabled 2fa
+                            account_status_tuple = execute_fetchone('SELECT * FROM account_status WHERE account_id = %s', (account_id,))
+                            account_status_2fa = account_status_tuple['enabled_2fa']
 
-                            #Reset account status
-                            sql = 'DELETE FROM account_status WHERE account_id = %s AND failed_attempts < 5'
-                            val = session['login_id'],
-                            execute_commit(sql, val)
-                            
-                            #check if user has done security questions, redirects to page if has not
-                            security_questions = execute_fetchall('SELECT * FROM security_questions WHERE account_id = %s', (str(session['login_id']), ))
-                            print(security_questions)
-                            if security_questions == ():
-                                return redirect(url_for('create_security_questions'))
+
+
+                            if account_status_2fa == 'enabled': #if enabled 2FA
+
+
+
+                                # Send 2FA token
+                                account_tuple = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s', (account_id,))
+                                account_email = account_tuple['school_email']
+                                account_username = account_tuple['username']
+                                generate_token = serializer.dumps(account_email, salt='2fa')
+                                _2fa_link = url_for('login_2fa', token=generate_token, _external=True)
+
+                                _2fa_message = Message('Sign-in with 2FA Token', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
+
+                                _2fa_message.body = f"Dear {account_username},\n\nTo complete your sign-in, please use the following 2FA link:\n{_2fa_link}\n\nThis message is auto generated. Please do not reply."
+
+                                #Set the token in db first
+                                execute_commit('INSERT INTO verification_token (token, account_id) VALUES (%s,%s)',(generate_token, account_id))
+
+                                mail.send(_2fa_message)
+
+
+
+                                return f'2fa token sent to {account_email}'
+
+                                # Generate message
+                                #CONTINUE WHERE YOU LEFT OFF (ACCOUNT LOGIN, 2FA DETECTED, NOW GENERATE MESSAGE AND CREATE approute for confirming)
+
+
+                            else: #There is no 2FA enabled
+                                #If login success, try to create session for the user
+                                create_session('login_status', True)
+                                create_session('login_id', account_id)
+                                create_session('username', username)
+                                session.permanent = True
+
+                                #Reset account status
+                                sql = 'DELETE FROM account_status WHERE account_id = %s AND failed_attempts < 5'
+                                val = session['login_id'],
+                                execute_commit(sql, val)
+
+                                #check if user has done security questions, redirects to page if has not
+                                security_questions = execute_fetchall('SELECT * FROM security_questions WHERE account_id = %s', (str(session['login_id']), ))
+                                print(security_questions)
+                                if security_questions == ():
+                                    return redirect(url_for('create_security_questions'))
 
                         except Error as e: #If login fail
                             print("Login Fail")
@@ -637,7 +683,7 @@ def login():
                         #even if correct pass, but locked
                         account_locked = True
 
-                elif bcrypt.check_password_hash(hashed_pass, password) == False:
+                elif bcrypt.check_password_hash(hashed_pass, password) == False: # If wrong password
                     print("Wrong password for:", username)
                     sql = 'SELECT * FROM account_status WHERE account_id = %s'
 
@@ -651,12 +697,26 @@ def login():
                         failed_account = execute_fetchone('SELECT failed_attempts FROM account_status WHERE account_id = %s', (account_id,))
                         print(failed_account)
                         if int(failed_account['failed_attempts']) >= 5:
+
                             sql = 'UPDATE account_status SET locked_status = %s WHERE account_id = %s'
                             val = ('locked', account_id)
-                            execute_commit(sql, val)
+                            execute_commit(sql, val) #Lock the user account
+
+                            #Generate a account locking email
+                            locking_message = Message(f'Account Locked for Security Safety', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
+                            locking_message.body = f'We have notice suspicious multiple failed login attempt from your account.\n\nTo protect your account, we have locked the account. Please contact administrator for support'
+                            mail.send(locking_message)
+
+
                             print('account with account id of:', account_id, 'has been locked')
                             # account locked
                             account_locked = True
+                        elif int(failed_account['failed_attempts']) == 3: # If 3 login failed attempt, generate message to warn user
+                            warning_message = Message(f'Suspicious Login Attempt Reported', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
+                            warning_message.body = f'We have notice multiple failed login attempt from your account.\n\nIf it is not you, Please reset your password IMMEDIATELY'
+                            mail.send(warning_message)
+
+
                     else:
                         sql = 'INSERT INTO account_status (account_id, failed_attempts) VALUES (%s, 1)'
                         execute_commit(sql, val)
@@ -677,6 +737,126 @@ def logout():
     remove_session('admin_status')
     remove_session('superadmin_status')
     return redirect(url_for('home'))
+
+
+# IMPORTANT!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Below two app route is for optional enabling 2fa. I set mandatory 2fa now so i comment out!
+# @app.route('/enable_2fa')
+# def enable_2fa():
+#
+#     if check_session('login_status') != False: # If there is a user logged in
+#
+#         #Check that user have not enable 2fa before
+#         account_status_tuple = execute_fetchone('SELECT * FROM account_status WHERE account_id = %s',(session['login_id'],))
+#         if account_status_tuple != None: # if there's account status in the table
+#             account_2fa_setting = account_status_tuple['enabled_2fa'] # Get the account status (enabled/disabled)
+#         else: # If there is no account status, set one and continue
+#             execute_commit('INSERT INTO ACCOUNT_STATUS (account_id) VALUES (%s)',(session['login_id'],))
+#             account_2fa_setting = 'disabled'
+#
+#         if account_2fa_setting == 'disabled':
+#             # Check if there's no enable_2fa token in the verification table within 2hr
+#             verification_tuple = execute_fetchone(
+#                 'SELECT * FROM verification_token WHERE account_id = %s AND token_type = "enable_2fa" AND timecreated BETWEEN DATE_SUB(NOW(), INTERVAL 2 HOUR) AND NOW()',
+#                 (session['login_id'],))
+#
+#             if verification_tuple == None: #If no 2fa enable token was made
+#
+#                 #Retrieve email basedon the login_id
+#                 email_tuple = execute_fetchone('SELECT school_email FROM accounts WHERE account_id = %s', (session['login_id'],))
+#                 email = email_tuple['school_email']
+#
+#                 #Generate a token
+#                 token = serializer.dumps(email, salt='2fa')
+#                 print("Token generated for 2FA: ", token)
+#
+#
+#                 #Prepare to send 2fa token message
+#                 enable_2fa_message = Message(f'2FA Setting Enable Verification',
+#                                              sender='ConnectNYPian@gmail.com',
+#                                              recipients=['connectnypian.test.receive@gmail.com'])
+#
+#                 link = url_for('confirm_2fa', token=token, _external=True)
+#                 enable_2fa_message.body = f'You have made a request to enable 2 Factor Authentication. To enable, verify please click the link below. Expire in 5 minutes.\n\n{link}\n\nIf you did not make this request, please change your password IMMEDIATELY or contact an administrator.'
+#                 mail.send(enable_2fa_message)
+#
+#                 #After sending the token set the verification token in the DB indicate that a token has been requested
+#                 execute_commit('INSERT INTO verification_token (token, account_id, token_type) VALUES (%s,%s,%s)', (token,session['login_id'], 'enable_2fa'))
+#
+#                 return '2FA token is sent to email'
+#
+#
+#             else:
+#                 return 'already made an request. Try again later.'
+#         else:
+#             return 'account already enabled 2fa'
+#     else:
+#         return redirect(url_for('signup'))
+#
+# @app.route('/confirm_2fa/<token>') #This app route is to active 2fa
+# def confirm_2fa(token):
+#     try:
+#         serialized = serializer.loads(token, salt='2fa', max_age=300)
+#     except BadSignature:
+#         return ' brother this one bad signature'
+#     except SignatureExpired:
+#         return ' brother next time verify faster'
+#     else:
+#         token_detail = execute_fetchone('SELECT * FROM verification_token WHERE token = %s',(token,))
+#
+#         #Check if token is used, if note used, we continue
+#         if token_detail['used_boolean'] == False:
+#
+#             #Set the token to used
+#             execute_commit('UPDATE verification_token SET used_boolean = True WHERE token = %s', (token,))
+#
+#             #Get the account_id
+#             account_id = token_detail['account_id']
+#
+#             #Enable 2fa
+#             execute_commit('UPDATE account_status SET enabled_2fa = "enabled" WHERE account_id = %s',(account_id,))
+#
+#             return '2FA has been successfully activated'
+#
+#
+#         else:
+#             return 'eh stop using the same token again, limpeh tell u this token used already right!'
+
+@app.route('/login_2fa/<token>')
+def login_2fa(token):
+    try:
+        serialized = serializer.loads(token, salt='2fa', max_age=300)
+    except BadSignature:
+        return ' brother this one bad signature'
+    except SignatureExpired:
+        return ' brother next time verify faster'
+    else:
+        #Ensure the token is in the db first
+        token_tuple = execute_fetchone('SELECT * FROM verification_token WHERE token = %s', (token,))
+
+        #If token exist
+        if token_tuple != None:
+
+            #Check that token is not used
+            if token_tuple['used_boolean'] != True:
+
+                #Set the token = used
+                execute_commit('UPDATE verification_token SET used_boolean = True WHERE token = %s', (token,))
+
+                #Enable sign in
+                account_id = token_tuple['account_id']
+
+                #Create session
+                session['login_status'] = True
+                session['login_id'] = account_id
+                session['username'] = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s',(account_id,))['username']
+                return redirect(url_for('home'))
+            else:
+                return 'token used'
+
+
+        else:
+            return 'Token does not exist'
+
 
 
 @app.route('/send_reset_pass', methods=['POST','GET'])
@@ -707,7 +887,7 @@ def send_reset_pass():
                     account_locked_status = account_tuple['locked_status'] # 'locked' or 'unlocked'
                 else:
                     #if there's no account_status in the db, make one and assign unlocked
-                    execute_commit('INSERT INTO account_status (account_id) VALUES (%s)', (user_id,))
+                    execute_commit('INSERT INTO account_status (account_id,failed_attempts) VALUES (%s,0)', (user_id,))
                     account_locked_status = 'unlocked'
 
                 if account_locked_status == 'unlocked': #If the account is not locked, allow changing of password
@@ -740,8 +920,8 @@ def send_reset_pass():
                             #Set up warning token and send
                             warning_token = serializer.dumps(email, salt='reset')
                             warning_verification_link = url_for('reset_pass_confirmed', token=warning_token, _external=True)
-                            warning_message = Message(f'Suspicious Activity Logged', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
-                            warning_message.body = f'We have notice suspicious password request from your account.\n\n If it is not you, Please reset your password IMMEDIATELY \n{warning_verification_link}\n\nSet up 2FA if you have not done so.'
+                            warning_message = Message(f'Suspicious Password Reset Reported', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
+                            warning_message.body = f'We have notice suspicious password request from your account.\n\n If it is not you, Please reset your password IMMEDIATELY \n{warning_verification_link}\n\n'
                             mail.send(warning_message)
 
                             #note down that sus link is sent
@@ -788,10 +968,10 @@ def reset_pass_confirmed(token):
 
         # Check if the token is used
         verification_detail = execute_fetchone('SELECT * FROM verification_token WHERE token = %s', (token,))
-        print(verification_detail['used_boolen'], ' -')
+        print(verification_detail['used_boolean'], ' -')
 
         # If token not used
-        if verification_detail['used_boolen'] == False:
+        if verification_detail['used_boolean'] == False:
             if request.method == 'POST' and form.validate():
 
                 # Obtaining USERID from token
@@ -816,9 +996,16 @@ def reset_pass_confirmed(token):
 
                     if result:
                         # Set the token status = Used (true)
-                        execute_commit('UPDATE verification_token SET used_boolen = True WHERE token = %s', (token,))
-                        
-                        return 'password updated'
+                        execute_commit('UPDATE verification_token SET used_boolean = True WHERE token = %s', (token,))
+
+                        #If reset pass, delete all session
+
+
+                        remove_session('login_status')
+                        remove_session('login_id')
+                        remove_session('username')
+
+                        return 'password updated, please log in again'
 
 
 
