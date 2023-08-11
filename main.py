@@ -261,6 +261,10 @@ for line in common_passwords:
 common_passwords_list = mergeSort(common_passwords_list)
 
 
+@app.errorhandler(404)
+def error_page(e):
+    return 'This is a error page la fuck, if you want see debug ownself comment out the @app.errorhandler(404)'
+
 @app.route('/')
 @check_security_questions
 def home():
@@ -674,7 +678,7 @@ def login():
                         #even if correct pass, but locked
                         account_locked = True
 
-                elif bcrypt.check_password_hash(hashed_pass, password) == False:
+                elif bcrypt.check_password_hash(hashed_pass, password) == False: # If wrong password
                     print("Wrong password for:", username)
                     sql = 'SELECT * FROM account_status WHERE account_id = %s'
 
@@ -688,12 +692,26 @@ def login():
                         failed_account = execute_fetchone('SELECT failed_attempts FROM account_status WHERE account_id = %s', (account_id,))
                         print(failed_account)
                         if int(failed_account['failed_attempts']) >= 5:
+
                             sql = 'UPDATE account_status SET locked_status = %s WHERE account_id = %s'
                             val = ('locked', account_id)
-                            execute_commit(sql, val)
+                            execute_commit(sql, val) #Lock the user account
+
+                            #Generate a account locking email
+                            locking_message = Message(f'Account Locked for Security Safety', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
+                            locking_message.body = f'We have notice suspicious multiple failed login attempt from your account.\n\nTo protect your account, we have locked the account. Please contact administrator for support'
+                            mail.send(locking_message)
+
+
                             print('account with account id of:', account_id, 'has been locked')
                             # account locked
                             account_locked = True
+                        elif int(failed_account['failed_attempts']) == 3: # If 3 login failed attempt, generate message to warn user
+                            warning_message = Message(f'Suspicious Login Attempt Reported', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
+                            warning_message.body = f'We have notice multiple failed login attempt from your account.\n\nIf it is not you, Please reset your password IMMEDIATELY'
+                            mail.send(warning_message)
+
+
                     else:
                         sql = 'INSERT INTO account_status (account_id, failed_attempts) VALUES (%s, 1)'
                         execute_commit(sql, val)
@@ -767,7 +785,7 @@ def logout():
 #     else:
 #         return redirect(url_for('signup'))
 #
-# @app.route('/confirm_2fa/<token>')
+# @app.route('/confirm_2fa/<token>') #This app route is to active 2fa
 # def confirm_2fa(token):
 #     try:
 #         serialized = serializer.loads(token, salt='2fa', max_age=300)
@@ -895,8 +913,8 @@ def send_reset_pass():
                             #Set up warning token and send
                             warning_token = serializer.dumps(email, salt='reset')
                             warning_verification_link = url_for('reset_pass_confirmed', token=warning_token, _external=True)
-                            warning_message = Message(f'Suspicious Activity Reported', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
-                            warning_message.body = f'We have notice suspicious password request from your account.\n\n If it is not you, Please reset your password IMMEDIATELY \n{warning_verification_link}\n\nSet up 2FA if you have not done so.'
+                            warning_message = Message(f'Suspicious Password Reset Reported', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
+                            warning_message.body = f'We have notice suspicious password request from your account.\n\n If it is not you, Please reset your password IMMEDIATELY \n{warning_verification_link}\n\n'
                             mail.send(warning_message)
 
                             #note down that sus link is sent
