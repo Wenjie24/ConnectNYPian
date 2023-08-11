@@ -3,6 +3,7 @@ import json
 from flask import Flask, render_template, request, redirect, url_for, session
 from flask_wtf.csrf import CSRFProtect
 import mysql.connector
+from MySQLdb import IntegrityError
 from flask_mysqldb import MySQL
 from flask_bcrypt import Bcrypt
 import MySQLdb.cursors
@@ -444,25 +445,34 @@ def confirm_email(token):
                 except Exception as e:
                     return f'Unknown Error Has Occurred\n {e}'
                 else:
-                     # Inserting data into account: account_id, email, username, date_created
-                    execute_commit('INSERT INTO accounts (hashed_pass, school_email, username) VALUES (%s, %s, %s)',(hashed_password, email, username))
-                    # Inserting school into sub table
-                    account_id_tuple = execute_fetchone('SELECT account_id FROM accounts WHERE username = %s', (username, ))
-                    account_id = account_id_tuple['account_id']
-                    execute_commit('INSERT INTO students (account_id, school) VALUES (%s, %s)', (account_id, school))
 
+                    try:
+                         # Inserting data into account: account_id, email, username, date_created
+                        execute_commit('INSERT INTO accounts (hashed_pass, school_email, username) VALUES (%s, %s, %s)',(hashed_password, email, username))
 
-                    print("CURRENT ACCOUNT ID TO BE ADDED IN ACCOUNT STATUS: ", account_id)
+                    except IntegrityError:
+                        return 'Cant create account. account already exist.'
+                    else:
+                        # Inserting school into sub table
+                        account_id_tuple = execute_fetchone('SELECT account_id FROM accounts WHERE username = %s',
+                                                            (username,))
+                        account_id = account_id_tuple['account_id']
+                        execute_commit('INSERT INTO students (account_id, school) VALUES (%s, %s)',
+                                       (account_id, school))
 
-                    #Make a account status for him
-                    execute_commit('INSERT INTO account_status (account_id, enabled_2fa) VALUES (%s,"enabled")', (account_id,))
+                        print("CURRENT ACCOUNT ID TO BE ADDED IN ACCOUNT STATUS: ", account_id)
 
-                    # Update the table that the token is used
-                    execute_commit('UPDATE verification_token SET used_boolean = True, account_id = %s WHERE token = %s',
-                                    (account_id, token))
+                        # Make a account status for him
+                        execute_commit('INSERT INTO account_status (account_id, enabled_2fa) VALUES (%s,"enabled")',
+                                       (account_id,))
 
-                    print("Account created")
-                    return "Token Valid, Account created, Please log in to continue."
+                        # Update the table that the token is used
+                        execute_commit(
+                            'UPDATE verification_token SET used_boolean = True, account_id = %s WHERE token = %s',
+                            (account_id, token))
+
+                        print("Account created")
+                        return "Token Valid, Account created, Please log in to continue."
 
             else:
                 return 'Token not exist or smth la'
