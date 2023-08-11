@@ -13,6 +13,10 @@ CREATE TABLE IF NOT EXISTS accounts (
 CREATE TABLE IF NOT EXISTS verification_token (
 	TOKEN VARCHAR(1000) NOT NULL ,
     account_id INT NOT NULL,
+    school_email VARCHAR(30) DEFAULT NULL,
+    username VARCHAR(30) DEFAULT NULL,
+    hashed_pass VARCHAR(255) DEFAULT NULL,
+    school VARCHAR(100) DEFAULT NULL,
     timecreated DATETIME DEFAULT CURRENT_TIMESTAMP(),
 	token_type VARCHAR(10) DEFAULT 'signup',
     used_boolean BOOLEAN DEFAULT FALSE,
@@ -120,7 +124,7 @@ CREATE TABLE IF NOT EXISTS follow_account (
     );
 
 CREATE TABLE IF NOT EXISTS account_status (
-	account_id INT NOT NULL, 
+	account_id INT NOT NULL,
     failed_attempts INT DEFAULT 0,
     ongoing_timer VARCHAR(20) DEFAULT 0,
     locked_status VARCHAR(20) NOT NULL DEFAULT 'unlocked',
