@@ -121,6 +121,7 @@ CREATE TABLE IF NOT EXISTS follow_account (
 
 CREATE TABLE IF NOT EXISTS account_status (
 	account_id INT NOT NULL, 
+    temp_dict JSON,
     failed_attempts INT DEFAULT 0,
     ongoing_timer VARCHAR(20) DEFAULT 0,
     locked_status VARCHAR(20) NOT NULL DEFAULT 'unlocked',
