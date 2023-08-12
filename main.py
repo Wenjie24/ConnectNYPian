@@ -337,11 +337,20 @@ def before_request():
         # Check if user still exist, if not just log them out (To ensure user id is valid in db)
         user_tuple = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s', (session['login_id'],))
         if user_tuple == None:
-            remove_all_session_user()
-            remove_all_session_superadmin_or_admin()
+            # since superadmin id = -1, it's 100% not in db, so to prevent removing of superadmin session
+            if not check_session('superadmin_status'):
+                remove_all_session_user()
+                remove_all_session_superadmin_or_admin()
 
+        print(session['admin_status'])
 
-        if not check_session('admin_status') or not check_session('superadmin_status'): # For normal user
+        if check_session('admin_status'): # For normal user
+
+            # If it is admin_status or superadmin_status
+            app.permanent_session_lifetime = timedelta(minutes=1)  # One minute time out
+            print(app.permanent_session_lifetime, ' - session time resetted!')
+        else:
+
             # Dynamic session life_time for inactivity for 5min
             app.permanent_session_lifetime = timedelta(minutes=5)
             print(app.permanent_session_lifetime, ' - session time resetted!')
@@ -369,10 +378,7 @@ def before_request():
                         print("Account not valid! kIck him out")
                         remove_all_session_user()
 
-        else:
-            #If it is admin_status or superadmin_status
-            app.permanent_session_lifetime = timedelta(minutes=1) #One minute time out
-            print(app.permanent_session_lifetime, ' - session time resetted!')
+
 
 
 
@@ -448,32 +454,40 @@ def school_home():
 def user(id):
     if check_login_status(): #Check for login status
         try:
-            result = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s', (id, ))
-            acc_class = result['class']
-            if acc_class == 'student':
+            account_type_tuple = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s',(id,))
+            account_type = account_type_tuple['class']
+
+
+
+
+            if account_type == 'student':
                 result = execute_fetchone('SELECT * FROM accounts a INNER JOIN students s ON a.account_id = s.account_id WHERE a.account_id = %s', (id,)) #Try to retrieve account id
-                posts = execute_fetchall('SELECT * FROM posts WHERE account_id = %s ORDER BY post_timestamp desc', (id, ))
-                following = execute_fetchall('SELECT count(*) following FROM follow_account WHERE follower_id = %s', (id,))
-                followers = execute_fetchall('SELECT count(*) followers FROM follow_account WHERE followee_id = %s', (id,))
-                post_no = execute_fetchall('SELECT count(*) posts FROM posts WHERE account_id = %s', (id,))
-            elif acc_class == 'educator':
-                result = execute_fetchone('SELECT * FROM accounts a INNER JOIN educators e ON a.account_id = e.account_id WHERE a.account_id = %s', (id,)) #Try to retrieve account id
-                posts = execute_fetchall('SELECT * FROM posts WHERE account_id = %s ORDER BY post_timestamp desc', (id, ))
-                following = execute_fetchall('SELECT count(*) following FROM follow_account WHERE follower_id = %s', (id,))
-                followers = execute_fetchall('SELECT count(*) followers FROM follow_account WHERE followee_id = %s', (id,))
-                post_no = execute_fetchall('SELECT count(*) posts FROM posts WHERE account_id = %s', (id,))
+                school = result['school']
+            elif account_type == 'educator':
+                result = execute_fetchone('SELECT * FROM accounts a INNER JOIN educators s ON a.account_id = s.account_id WHERE a.account_id = %s',(id,))  # Try to retrieve account id
+                school = result['school']
+
+            elif account_type == 'administrator':
+                result = execute_fetchone('SELECT * FROM accounts a INNER JOIN administrators s ON a.account_id = s.account_id WHERE a.account_id = %s',(id,))  # Try to retrieve account id
+                school = 'under the sea'
+
+            account_id = result['account_id']
+            school_email = result['school_email']
+            username = result['username']
+            created_timestamp = result['created_timestamp']
+            account_class = result['class']
+
+            posts = execute_fetchall('SELECT * FROM posts WHERE account_id = %s ORDER BY post_timestamp desc', (id, ))
+            following = execute_fetchall('SELECT count(*) following FROM follow_account WHERE follower_id = %s', (id,))
+            followers = execute_fetchall('SELECT count(*) followers FROM follow_account WHERE followee_id = %s', (id,))
+            post_no = execute_fetchall('SELECT count(*) posts FROM posts WHERE account_id = %s', (id,))
         except Error as e: # if error
             print("error retrieving account id")
             #Redirect to error page
         else: # if able to retrieve
             if result: #If account id exist
                 try:
-                    account_id = result['account_id']
-                    school_email = result['school_email']
-                    username = result['username']
-                    created_timestamp = result['created_timestamp']
-                    school = result['school']
-                    account_class = result['class']
+
                     if following:
                         following = following[0]['following']
                     else:
@@ -756,15 +770,6 @@ def login():
         except Error as e:
             print("Unknown error occurred while retrieving user credential.\n", e)
         else:
-            #If is logging in as admin
-            if username == 'administrator' and password == admin_secret_key:
-                create_session('login_status', True)
-                create_session('login_id', -1)
-                return redirect(url_for('admin'))
-
-
-
-
 
             # If there's result from retrieving
             if result:
@@ -1518,10 +1523,15 @@ def verify_as_educator():
 @app.route('/admin-login', methods=['GET', 'POST'])
 def admin_login():
 
+
+
     if 'superadmin_status' in session:
         return redirect(url_for('superadmin'))
     elif 'admin_status' in session:
         return redirect(url_for('admin'))
+
+    # Auto clear session
+    remove_all_session_user()
 
     form = login_form(request.form)
     account_locked = False
@@ -1593,10 +1603,14 @@ def admin_login():
 @app.route('/superadmin-login', methods=['GET', 'POST'])
 def superadmin_login():
 
+
     if 'superadmin_status' in session:
         return redirect(url_for('superadmin'))
     elif 'admin_status' in session:
         return redirect(url_for('admin'))
+
+    # Auto clear session
+    remove_all_session_user()
 
 
     invalid_pass_or_username = False
@@ -1614,6 +1628,10 @@ def superadmin_login():
             #create_session('username', username) No need for username
             create_session('admin_status', True)
             create_session('superadmin_status', True)
+
+            print("IM ON SIGNIN SUPPERADMIN- ", session['admin_status'])
+
+            print("Everything created")
 
             return redirect(url_for('superadmin'))
 
