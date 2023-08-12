@@ -323,7 +323,7 @@ def before_request():
                 remove_all_session()
             else:
                 #IF there is reset token, check the value
-                if latest_reset_token == reset_token_tuple['token']:
+                if latest_reset_token == reset_token_tuple['TOKEN']:
                     print("Reset token is the same! Account is valid")
                 else:
                     print("Account not valid! kIck him out")
@@ -738,7 +738,7 @@ def login():
                                     'SELECT * FROM verification_token WHERE token_type = "reset" and account_id = %s AND used_boolean = True ORDER BY timecreated DESC LIMIT 1',
                                     (account_id,))
                                 if reset_token_tuple != None:
-                                    latest_reset_token = reset_token_tuple['token']
+                                    latest_reset_token = reset_token_tuple['TOKEN']
                                     session['latest_reset_token'] = latest_reset_token
 
                                 session.permanent = True
@@ -916,8 +916,6 @@ def login_2fa(token):
             #Check that token is not used
             if token_tuple['used_boolean'] != True:
 
-                #Set the token = used
-                execute_commit('UPDATE verification_token SET used_boolean = True WHERE token = %s', (token,))
 
                 #Enable sign in
                 account_id = token_tuple['account_id']
@@ -930,8 +928,12 @@ def login_2fa(token):
                 #fetch the latest reset token and set it in the session if there's one
                 reset_token_tuple = execute_fetchone('SELECT * FROM verification_token WHERE token_type = "reset" and account_id = %s AND used_boolean = True ORDER BY timecreated DESC LIMIT 1',(account_id,))
                 if reset_token_tuple != None:
-                    latest_reset_token = reset_token_tuple['token']
+                    print(reset_token_tuple)
+                    latest_reset_token = reset_token_tuple['TOKEN']
                     session['latest_reset_token'] = latest_reset_token
+
+                # Set the token = used
+                execute_commit('UPDATE verification_token SET used_boolean = True WHERE token = %s', (token,))
 
                 return redirect(url_for('home'))
             else:
