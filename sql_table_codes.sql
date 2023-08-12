@@ -106,6 +106,7 @@ CREATE TABLE IF NOT EXISTS students (
 
 CREATE TABLE IF NOT EXISTS educators (
 	account_id INT NOT NULL PRIMARY KEY REFERENCES accounts(account_id),
+    employee_id VARCHAR(20) UNIQUE NOT NULL,
     school VARCHAR(100),
     department VARCHAR(100),
     interest_selection VARCHAR(100)

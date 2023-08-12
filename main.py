@@ -145,6 +145,8 @@ def remove_all_session():
         remove_session('login_id')
         remove_session('username')
         remove_session('latest_reset_token')
+        remove_session('admin_status')
+        remove_session('superadmin_status')
     except Exception:
         print("Error in function; remove all session")
     else:
@@ -375,12 +377,17 @@ def school_home():
     if check_login_status(): #Check for login
         print("logged in")
         school_specific = True
-        sql = 'SELECT school FROM students WHERE account_id = %s'
-        val = str(session['login_id']),
-        school = execute_fetchone(sql, val)
-        sql = 'SELECT * FROM posts INNER JOIN accounts on posts.account_id = accounts.account_id INNER JOIN students ON posts.account_id = students.account_id WHERE students.school = %s AND posts.account_id NOT IN (SELECT blocked_account_id FROM blocks WHERE blocker_account_id = %s) AND posts.account_id NOT IN (SELECT blocker_account_id FROM blocks WHERE blocked_account_id = %s) ORDER BY posts.post_timestamp desc'
-        val = (str(school['school']), str(session['login_id']), str(session['login_id']))
-        feed = execute_fetchall(sql, val)
+        request = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s', (str(session['login_id']), ))
+        acc_class = request['class']
+        if acc_class == 'student':
+            sql = 'SELECT school FROM students WHERE account_id = %s'
+            val = str(session['login_id']),
+            school = execute_fetchone(sql, val)
+            sql = 'SELECT * FROM posts INNER JOIN accounts on posts.account_id = accounts.account_id INNER JOIN students ON posts.account_id = students.account_id WHERE students.school = %s AND posts.account_id NOT IN (SELECT blocked_account_id FROM blocks WHERE blocker_account_id = %s) AND posts.account_id NOT IN (SELECT blocker_account_id FROM blocks WHERE blocked_account_id = %s) ORDER BY posts.post_timestamp desc'
+            val = (str(school['school']), str(session['login_id']), str(session['login_id']))
+            feed = execute_fetchall(sql, val)
+        elif acc_class == 'educator' or 'administrator':
+            feed = execute_fetchall('SELECT * FROM posts INNER JOIN accounts on posts.account_id = accounts.account_id INNER JOIN students ON posts.account_id = students.account_id ORDER BY posts.post_timestamp desc')
         sql = 'SELECT post_id FROM likes WHERE account_id = %s'
         val = str(session['login_id']),
         original_list = execute_fetchall(sql, val)
@@ -396,11 +403,20 @@ def school_home():
 def user(id):
     if check_login_status(): #Check for login status
         try:
-            result = execute_fetchone('SELECT * FROM accounts a INNER JOIN students s ON a.account_id = s.account_id WHERE a.account_id = %s', (id,)) #Try to retrieve account id
-            posts = execute_fetchall('SELECT * FROM posts WHERE account_id = %s ORDER BY post_timestamp desc', (id, ))
-            following = execute_fetchall('SELECT count(*) following FROM follow_account WHERE follower_id = %s', (id,))
-            followers = execute_fetchall('SELECT count(*) followers FROM follow_account WHERE followee_id = %s', (id,))
-            post_no = execute_fetchall('SELECT count(*) posts FROM posts WHERE account_id = %s', (id,))
+            result = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s', (id, ))
+            acc_class = result['class']
+            if acc_class == 'student':
+                result = execute_fetchone('SELECT * FROM accounts a INNER JOIN students s ON a.account_id = s.account_id WHERE a.account_id = %s', (id,)) #Try to retrieve account id
+                posts = execute_fetchall('SELECT * FROM posts WHERE account_id = %s ORDER BY post_timestamp desc', (id, ))
+                following = execute_fetchall('SELECT count(*) following FROM follow_account WHERE follower_id = %s', (id,))
+                followers = execute_fetchall('SELECT count(*) followers FROM follow_account WHERE followee_id = %s', (id,))
+                post_no = execute_fetchall('SELECT count(*) posts FROM posts WHERE account_id = %s', (id,))
+            elif acc_class == 'educator':
+                result = execute_fetchone('SELECT * FROM accounts a INNER JOIN educators e ON a.account_id = e.account_id WHERE a.account_id = %s', (id,)) #Try to retrieve account id
+                posts = execute_fetchall('SELECT * FROM posts WHERE account_id = %s ORDER BY post_timestamp desc', (id, ))
+                following = execute_fetchall('SELECT count(*) following FROM follow_account WHERE follower_id = %s', (id,))
+                followers = execute_fetchall('SELECT count(*) followers FROM follow_account WHERE followee_id = %s', (id,))
+                post_no = execute_fetchall('SELECT count(*) posts FROM posts WHERE account_id = %s', (id,))
         except Error as e: # if error
             print("error retrieving account id")
             #Redirect to error page
@@ -1417,6 +1433,7 @@ def unlock_account(account_id):
 @check_security_questions
 def verify_as_educator():
     request_success = False
+    duplicate_employee_id = False
     form = verify_as_educator_form(request.form)
     sql = 'SELECT * FROM verify_as_educator_request WHERE account_id = %s'
     val = str(session['login_id']),
@@ -1426,12 +1443,16 @@ def verify_as_educator():
 
     if request.method == 'POST' and form.validate():
         employee_id = form.employee_id.data
+        result = execute_fetchall('SELECT * FROM verify_as_educator_request WHERE employee_id = %s', (employee_id, ))
+        if result:
+            duplicate_employee_id = True
+            return render_template('/processes/verify_as_educator.html', form=form, request_success=request_success, duplicate_employee_id=duplicate_employee_id)
         department = form.department.data
         sql = 'INSERT INTO verify_as_educator_request (account_id, employee_id, department) VALUES (%s, %s, %s)'
         val = (str(session['login_id']), employee_id, department)
         execute_commit(sql, val)
         request_success = True
-    return render_template('/processes/verify_as_educator.html', form=form, request_success=request_success)
+    return render_template('/processes/verify_as_educator.html', form=form, request_success=request_success, duplicate_employee_id=duplicate_employee_id)
 
 
 @app.route('/admin-login', methods=['GET', 'POST'])
@@ -1588,12 +1609,22 @@ def superadmin():
 @app.route('/admin-unlock-account/<account_id>')
 @admin_login_required
 def admin_unlock_account(account_id):
-    pass
+    execute_commit("UPDATE account_status SET locked-status ='unlocked', failed_attempts=0 WHERE account_id = %s", (str(account_id), ))
+    return redirect(url_for('admin'))
 
 @app.route('/grant-educator-verification/<account_id>')
 @admin_login_required
 def grant_educator_verification(account_id):
-    pass
+    request = execute_fetchone("SELECT * FROM verify_as_educator_request v INNER JOIN students s ON v.account_id = s.account_id WHERE v.account_id = %s", (str(account_id), ))
+    employee_id = request['employee_id']
+    department = request['department']
+    school = request['school']
+    execute_commit('DELETE FROM students WHERE account_id = %s', (str(account_id), ))
+    execute_commit('INSERT INTO educators (account_id, employee_id, school, department) VALUES (%s, %s, %s, %s)', (str(account_id), employee_id, school, department))
+    execute_commit("UPDATE accounts SET class='educator' WHERE account_id = %s", (str(account_id), ))
+    execute_commit('DELETE FROM verify_as_educator_request WHERE account_id = %s', (str(account_id), ))
+    return redirect(url_for('admin'))
+
 
 if __name__ == '__main__':
     app.run(debug=True)
@@ -1604,3 +1635,4 @@ if __name__ == '__main__':
 #2) Check database before performing query instead of session (FIXED!)
 #3) check for no duplicate before allowing sign up. (Fixed!)
 #4) user still can perform action even after resetting password (because we never keep changing for password change) (FIXED!)
+#5) i dont think educators or admins can post i havent tested
