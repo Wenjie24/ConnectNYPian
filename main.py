@@ -139,6 +139,17 @@ def remove_session(session_key):
     except Error as e:
         print("An error occurred while popping session.\n", e)
 
+def remove_all_session():
+    try:
+        remove_session('login_status')
+        remove_session('login_id')
+        remove_session('username')
+        remove_session('latest_reset_token')
+    except Exception:
+        print("Error in function; remove all session")
+    else:
+        return True
+
 def check_session(session_key):
     try:
         if session_key in session:
@@ -284,10 +295,42 @@ common_passwords_list = mergeSort(common_passwords_list)
 # DYNAMIC SESSION LIFE
 @app.before_request
 def before_request():
-    #Dynamic session life_time for inactivity
+
     if check_login_status():# if logged in
+
+        # Dynamic session life_time for inactivity for 5min
+        session.permanent = True
         app.permanent_session_lifetime = timedelta(minutes=5)
         print(app.permanent_session_lifetime, ' - session time resetted!')
+
+        #Check if user still exist, if not just log them out
+        user_tuple = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s',(session['login_id'],))
+        if user_tuple == None:
+            remove_all_session()
+
+        #if latest reset token is in session
+        reset_token_tuple = execute_fetchone(
+            'SELECT * FROM verification_token WHERE token_type = "reset" and account_id = %s AND used_boolean = True ORDER BY timecreated DESC LIMIT 1',
+            (session['login_id'],))
+
+        if reset_token_tuple != None: # If there is latest token
+            try:
+                latest_reset_token = session['latest_reset_token']
+            except:
+                #If there is no reset token, kick the user out too
+                # Because there is reset_token_tuple in the db
+                print("There is no reset token!")
+                remove_all_session()
+            else:
+                #IF there is reset token, check the value
+                if latest_reset_token == reset_token_tuple['TOKEN']:
+                    print("Reset token is the same! Account is valid")
+                else:
+                    print("Account not valid! kIck him out")
+                    remove_all_session()
+
+
+
 #END
 
 @app.errorhandler(404)
@@ -476,9 +519,7 @@ def confirm_email(token):
 
             else:
                 return 'Token not exist or smth la'
-    finally:
-        #Remove user dict if expired
-        remove_session('temp_sign_up_dict')
+
 
 
 
@@ -690,6 +731,16 @@ def login():
                                 create_session('login_status', True)
                                 create_session('login_id', account_id)
                                 create_session('username', username)
+
+
+                                #Get the latest reset token if there is any to compare with existing
+                                reset_token_tuple = execute_fetchone(
+                                    'SELECT * FROM verification_token WHERE token_type = "reset" and account_id = %s AND used_boolean = True ORDER BY timecreated DESC LIMIT 1',
+                                    (account_id,))
+                                if reset_token_tuple != None:
+                                    latest_reset_token = reset_token_tuple['TOKEN']
+                                    session['latest_reset_token'] = latest_reset_token
+
                                 session.permanent = True
 
                                 #Reset account status
@@ -761,9 +812,7 @@ def login():
 
 @app.route('/logout')
 def logout():
-    remove_session('login_status')
-    remove_session('login_id')
-    remove_session('username')
+    remove_all_session()
     return redirect(url_for('home'))
 
 
@@ -867,16 +916,25 @@ def login_2fa(token):
             #Check that token is not used
             if token_tuple['used_boolean'] != True:
 
-                #Set the token = used
-                execute_commit('UPDATE verification_token SET used_boolean = True WHERE token = %s', (token,))
 
                 #Enable sign in
                 account_id = token_tuple['account_id']
 
-                #Create session
+                #Create session login_status, login_id and username
                 session['login_status'] = True
                 session['login_id'] = account_id
                 session['username'] = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s',(account_id,))['username']
+
+                #fetch the latest reset token and set it in the session if there's one
+                reset_token_tuple = execute_fetchone('SELECT * FROM verification_token WHERE token_type = "reset" and account_id = %s AND used_boolean = True ORDER BY timecreated DESC LIMIT 1',(account_id,))
+                if reset_token_tuple != None:
+                    print(reset_token_tuple)
+                    latest_reset_token = reset_token_tuple['TOKEN']
+                    session['latest_reset_token'] = latest_reset_token
+
+                # Set the token = used
+                execute_commit('UPDATE verification_token SET used_boolean = True WHERE token = %s', (token,))
+
                 return redirect(url_for('home'))
             else:
                 return 'token used'
@@ -975,12 +1033,11 @@ def send_reset_pass():
                             execute_commit('UPDATE account_status SET locked_status = "locked" WHERE account_id = %s',(user_id,))
 
                             #clear session
-                            remove_session('login_status')
-                            remove_session('login_id')
-                            remove_session('username')
+
 
                             return 'LOCKING UR ACCOUNT AND SEND EMAIL'
                 else:
+                    remove_all_session()
                     return 'account locked please contact admin'
 
 
@@ -1037,12 +1094,10 @@ def reset_pass_confirmed(token):
                         # Set the token status = Used (true)
                         execute_commit('UPDATE verification_token SET used_boolean = True WHERE token = %s', (token,))
 
-                        #If reset pass, delete all session
+                        #If reset pass, delete all session on the device
 
 
-                        remove_session('login_status')
-                        remove_session('login_id')
-                        remove_session('username')
+                        remove_all_session()
 
                         return 'password updated, please log in again'
 
@@ -1352,6 +1407,6 @@ if __name__ == '__main__':
 
 #Security Issue
 #1) account cant be locked if it does not exist
-#2) Check database before performing query instead of session
-#3) check for no duplicate before allowing sign up.
-#4) user still can perform action even after resetting password (because we never keep changing for password change)
+#2) Check database before performing query instead of session (FIXED!)
+#3) check for no duplicate before allowing sign up. (Fixed!)
+#4) user still can perform action even after resetting password (because we never keep changing for password change) (FIXED!)
