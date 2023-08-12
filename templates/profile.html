@@ -21,15 +21,27 @@
   -->
 
   <div class="row justify-content-center">
-    <div class="col-md-4" style="width: 400px;">
-      <div class="card mb-4 shadow-sm">
+    <div class="col-md-4" style="width: 500px;">
+      <div class="card shadow-sm">
+        <a href="#" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="width:30px; margin-left:17px; margin-top:10px"><img src="/static/images/more.png" style="width: 22px"></a>
+        <div class="dropdown-menu" aria-labelledby="dropdownMenuLink" style="float:right;">
+          {% if is_owner %}
+          <a class="dropdown-item" href="/edit_profile">Edit Profile</a>
+          <a class="dropdown-item" href="/send_reset_pass" data-toggle="modal" data-target=".bd-example-modal-sm">Reset Password</a>
+          {% if account_class == 'student' %}
+          <a class="dropdown-item" href="/verify-as-educator">Verify as Educator</a>
+          {% endif %}
+          {% else %}
+          <a href="/block/{{account_id}}" class="dropdown-item">Block {{username}}</a>
+          {% endif %}
+        </div>
         <img
-                src="/static/images/person-circle.svg"
-                alt="Profile Picture"
-                width="100%"
-                height="225"
-                onclick="editProfile()"
-                style="margin-top: 30px; margin-bottom: 30px"
+          src="/static/images/person-circle.svg"
+          alt="Profile Picture"
+          width="100%"
+          height="225"
+          onclick="editProfile()"
+          style="margin-top: 10px; margin-bottom: 30px"
         />
         {% if not is_owner %}
         {% if not is_following %}
@@ -66,25 +78,15 @@
             <b>School:</b> {{school}}
           </p>
 
-          <p class="card-text">
+          <div class="row" style="width: 260px;">
+          <p class="card-text col">
             <b>Following:</b> {{following}}
           </p>
-          <p class="card-text">
+          <p class="card-text col">
             <b>Followers:</b> {{followers}}
           </p>
-          <p class="card-text">
-            <b>Posts:</b> {{post_no}}
-          </p>
           {% if is_owner %}
-          <div class="d-flex justify-content-between align-items-center">
-            <div class="btn-group">
-              <button type="button" class="btn btn-primary" data-toggle="modal" data-target=".bd-example-modal-sm">Reset password</button>
-
-
-            </div>
-          </div>
-
-
+  
           <div class="modal fade bd-example-modal-sm" tabindex="-1" role="dialog" aria-labelledby="mySmallModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-sm">
 
@@ -103,30 +105,30 @@
         </div>
       </div>
     </div>
-
-    <div class="col-md-6">
+<br>
+<br>
+    <div class="col-md-4" style="width: 480px;">
       {% if is_owner %}
-      <h3 style="margin-bottom: 20px;">My Posts</h3>
+      <h3 style="margin-bottom: 20px;">My Posts ({{post_no}})</h3>
       {% else %}
-      <h3>{{username}}'s Posts</h3>
+      <h3>{{username}}'s Posts ({{post_no}})</h3>
       {% endif %}
       {% for post in posts %}
       <a href="/comments/{{post.post_id}}" style="color: black; text-decoration:none">
-        <div class="card mb-3 shadow-sm">
-          <div class="card-body">
-            <h4 class="card-text">
-              {{post.title}}
-            </h4>
-            <p class="card-text">
-              {{post.body}}
-            </p>
-            <p class="card-text">
-              <b>Date:</b> {{post.post_timestamp}}
-            </p>
-            <p class="card-text">
-              <b>Likes:</b> this doesnt exist yet it will soon tho
-            </p>
-          </div>
+      <div class="card mb-3 shadow-sm">
+        <div class="card-body">
+          <h4 class="card-text">
+            {{post.title}}
+          </h4>
+          <p class="card-text">
+            {{post.body}}
+          </p>
+          <p class="card-text">
+            <b>Date:</b> {{post.post_timestamp}}
+          </p>
+          <p class="card-text">
+            <b>Likes:</b> {{post.like_count}}
+          </p>
         </div>
       </a>
       {% endfor %}

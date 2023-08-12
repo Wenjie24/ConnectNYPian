@@ -190,20 +190,32 @@ def checklockedstatus(account_id):
     except TypeError:
         return False
 
-def checksecurityquestions():
-    sql = 'SELECT * FROM security_questions WHERE account_id = %s'
-    val = str(session['login_id']),
-    result = execute_fetchone(sql, val)
-    if result:
-        return True
-    else:
-        print('redirecting')
-        return redirect(url_for('create_security_questions'))
-    
+def admin_login_required(f):
+    @wraps(f)
+    def wrap(*args, **kwargs):
+        if 'admin_status' in session:
+            pass
+        else:
+            return redirect(url_for('admin_login'))
+        return f(*args, **kwargs)
+    return wrap
+
+def superadmin_login_required(f):
+    @wraps(f)
+    def wrap(*args, **kwargs):
+        if 'admin_status' in session and 'superadmin_status' in session:
+            pass
+        else:
+            return redirect(url_for('superadmin_login'))
+        return f(*args, **kwargs)
+    return wrap
+
 def check_security_questions(f):
     @wraps(f)
     def wrap(*args, **kwargs):
         if check_login_status():
+            if 'superadmin_status' in session:
+                return redirect(url_for('superadmin'))
             sql = 'SELECT * FROM security_questions WHERE account_id = %s'
             val = str(session['login_id']),
             result = execute_fetchone(sql, val)
@@ -211,7 +223,7 @@ def check_security_questions(f):
                 pass
             else:
                 return redirect(url_for('create_security_questions'))
-            
+
             return f(*args, **kwargs)
         else: return redirect(url_for('signup'))
     return wrap
@@ -246,17 +258,17 @@ def mergeSortedLists(a, b):
     while a != [] and b == []:
         c.append(a[0])
         a.remove(a[0])
-        
+
     while a == [] and b != []:
         c.append(b[0])
         b.remove(b[0])
-    
+
     return c
 
 def check_common_password(arr, target):
     low = 0
     high = len(arr) - 1
-    
+
     while low <= high:
         mid = (low + high) // 2
         if arr[mid] == target:
@@ -265,7 +277,7 @@ def check_common_password(arr, target):
             low = mid + 1
         else:
             high = mid - 1
-   
+
     return False
 
 def containsLetterAndNumber(input):
@@ -355,7 +367,7 @@ def home():
     else:
         print("Redirecting to sign up")
         return redirect(url_for('signup'))
-    
+
 @app.route('/school-specific')
 @check_security_questions
 def school_home():
@@ -400,6 +412,7 @@ def user(id):
                     username = result['username']
                     created_timestamp = result['created_timestamp']
                     school = result['school']
+                    account_class = result['class']
                     if following:
                         following = following[0]['following']
                     else:
@@ -410,7 +423,7 @@ def user(id):
                         followers = 0
                     if post_no:
                         post_no = post_no[0]['posts']
-                    else: 
+                    else:
                         post_no = 0
 
                 except Error as e:
@@ -418,11 +431,11 @@ def user(id):
                 else:
                     if check_session('login_id') == account_id: #Check if target account is logged in
                         print(account_id)
-                        return render_template('profile.html', is_owner=True, account_id=account_id, school_email=school_email, username=username, created_timestamp=created_timestamp, posts=posts, is_following=False, following=following, followers=followers, post_no=post_no, is_blocked=False, school=school)
+                        return render_template('profile.html', is_owner=True, account_id=account_id, school_email=school_email, username=username, created_timestamp=created_timestamp, posts=posts, is_following=False, following=following, followers=followers, post_no=post_no, is_blocked=False, school=school, account_class=account_class)
                         print("Account id logged in")
                     else:
                         print("Account id not logged in")
-                        
+
                         # check if following the user
                         following_list = execute_fetchall('SELECT * FROM follow_account WHERE follower_id = %s', (str(session['login_id']), ))
                         following_list = [item['followee_id'] for item in following_list]
@@ -437,7 +450,7 @@ def user(id):
                                     print("FALSE")
                         else:
                             is_following = False
-                        
+
                         # check if blocked the user
                         blocked_list = execute_fetchall('SELECT * FROM blocks WHERE blocker_account_id = %s', (str(session['login_id']), ))
                         blocked_list = [item['blocked_account_id'] for item in blocked_list]
@@ -451,8 +464,8 @@ def user(id):
                         else:
                             is_blocked = False
 
-                        return render_template('profile.html',  account_id=account_id, school_email=school_email, username=username, created_timestamp=created_timestamp, posts=posts, is_following=is_following, following=following, followers=followers, post_no=post_no, is_blocked=is_blocked, school=school)
-                    
+                        return render_template('profile.html',  account_id=account_id, school_email=school_email, username=username, created_timestamp=created_timestamp, posts=posts, is_following=is_following, following=following, followers=followers, post_no=post_no, is_blocked=is_blocked, school=school, account_class=account_class)
+
 
             else: #If account id not exist
                 return 'no such account page'
@@ -491,7 +504,11 @@ def confirm_email(token):
 
                     try:
                          # Inserting data into account: account_id, email, username, date_created
-                        execute_commit('INSERT INTO accounts (hashed_pass, school_email, username) VALUES (%s, %s, %s)',(hashed_password, email, username))
+                        execute_commit('INSERT INTO accounts (hashed_pass, school_email, username, class) VALUES (%s, %s, %s, %s)',(hashed_password, email, username, 'student'))
+                        # Inserting school into sub table
+                        account_id_tuple = execute_fetchone('SELECT account_id FROM accounts WHERE username = %s', (username, ))
+                        account_id = account_id_tuple['account_id']
+                        execute_commit('INSERT INTO students (account_id, school) VALUES (%s, %s)', (str(account_id), school))
 
                     except IntegrityError:
                         return 'Cant create account. account already exist.'
@@ -500,8 +517,8 @@ def confirm_email(token):
                         account_id_tuple = execute_fetchone('SELECT account_id FROM accounts WHERE username = %s',
                                                             (username,))
                         account_id = account_id_tuple['account_id']
-                        execute_commit('INSERT INTO students (account_id, school) VALUES (%s, %s)',
-                                       (account_id, school))
+                        #execute_commit('INSERT INTO students (account_id, school) VALUES (%s, %s)',
+                                       #(account_id, school))
 
                         print("CURRENT ACCOUNT ID TO BE ADDED IN ACCOUNT STATUS: ", account_id)
 
@@ -615,7 +632,7 @@ def signup():
                     username_error = True
                     email_error = True
                     password_error = False
-                
+
                 if not password_same:
                     username_error = False
                     email_error = False
@@ -639,12 +656,6 @@ def signup():
         # DML into MySQLdb
 
     return render_template('processes/signup.html', form=form, username_error=username_error, email_error=email_error, signup_status=signup_status, password_error=password_error, common_password_error=common_password_error)
-
-@app.route('/admin')
-def admin():
-    print("admin!!")
-    return render_template('processes/admin.html')
-
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -675,7 +686,7 @@ def login():
                 create_session('login_status', True)
                 create_session('login_id', -1)
                 return redirect(url_for('admin'))
-            
+
 
 
 
@@ -744,7 +755,7 @@ def login():
                                 session.permanent = True
 
                                 #Reset account status
-                                sql = 'DELETE FROM account_status WHERE account_id = %s AND failed_attempts < 5'
+                                sql = 'UPDATE account_status SET failed_attempts = 0 WHERE account_id = %s AND failed_attempts < 5'
                                 val = session['login_id'],
                                 execute_commit(sql, val)
 
@@ -1116,7 +1127,7 @@ def reset_pass_confirmed(token):
 def createpost():
     if 'login_status' not in session:
         return redirect(url_for('login'))
-    
+
     form = create_post(request.form)
     if request.method == 'POST' and form.validate():
         # assign form data to variables
@@ -1161,7 +1172,7 @@ def removelike(post_id):
             val = (post_id, )
             execute_commit(sql, val)
         return redirect(url_for('home'))
-    
+
     except Error as e:
         print("Error removing like: ", e)
 
@@ -1178,11 +1189,13 @@ def deletepost(post_id):
             except Error as e:
                 print('Error executing sql:', e)
             else:
-                if session['login_id'] == account_id['account_id']:
+                if session['login_id'] == account_id['account_id'] or session['admin_status']:
                     sql = 'DELETE FROM comments WHERE post_id = %s'
                     val = (post_id, )
                     execute_commit(sql, val)
                     sql = 'DELETE FROM likes WHERE post_id = %s'
+                    execute_commit(sql, val)
+                    sql = 'DELETE FROM report_post WHERE post_id = %s'
                     execute_commit(sql, val)
                     sql = 'DELETE FROM posts WHERE post_id = %s'
                     execute_commit(sql, val)
@@ -1225,7 +1238,7 @@ def comments(post_id):
                 val = (str(post_id), )
                 comments = execute_fetchall(sql, val)
                 return render_template('/processes/comments.html', post=post, liked_posts=liked_posts, form=form, comments=comments)
-    
+
         return render_template('/processes/comments.html', post=post, liked_posts=liked_posts, form=form, comments=comments)
 
     except Error as e:
@@ -1243,7 +1256,7 @@ def deletecomment(post_id, comment_id):
             except Error as e:
                 print('Error executing sql:', e)
             else:
-                if session['login_id'] == account_id['account_id']:
+                if session['login_id'] == account_id['account_id'] or session['admin_status']:
                     sql = 'DELETE FROM comments WHERE comment_id = %s'
                     val = (str(comment_id), )
                     execute_commit(sql, val)
@@ -1252,7 +1265,7 @@ def deletecomment(post_id, comment_id):
                     val = (post_id, )
                     execute_commit(sql, val)
             return redirect(url_for('comments', post_id=post_id))
-    
+
     except Error as e:
         print('Error deleting comment:', e)
 
@@ -1316,10 +1329,10 @@ def unfollow_account(account_id):
 def block(account_id):
     try:
         if 'login_id' in session:
-            
+
             if str(session['login_id']) == str(account_id):
                 return redirect(url_for('user', id=account_id, is_blocked=False))
-            
+
             sql = 'SELECT * FROM blocks WHERE blocker_account_id = %s AND blocked_account_id = %s'
             val = (str(session['login_id']), account_id)
             blocked = execute_fetchall(sql, val)
@@ -1332,10 +1345,10 @@ def block(account_id):
                 execute_commit(sql, val)
                 is_blocked = True
             return redirect(url_for('user', id=account_id, is_blocked=is_blocked))
-        
+
         else:
             return redirect(url_for('login'))
-        
+
     except Error as e:
         print('Error blocking account:', e)
 
@@ -1348,12 +1361,12 @@ def unblock(account_id):
             val = (str(session['login_id']), account_id)
             execute_commit(sql, val)
             is_blocked = False
-        
+
             return redirect(url_for('user', id=account_id, is_blocked=is_blocked))
-        
+
         else:
             return redirect(url_for('login'))
-        
+
     except Error as e:
         print('Error unblocking account:', e)
 
@@ -1372,7 +1385,7 @@ def report_post(post_id):
             return render_template('/processes/report_post.html', form=form, post_id=post_id)
         else:
             return redirect(url_for('login'))
-        
+
     except Error as e:
         print('Error reporting user:', e)
 
@@ -1381,7 +1394,7 @@ def unlock_account(account_id):
     wrong_answer = None
     form = unlock_account_form(request.form)
     sql = 'SELECT * FROM security_questions WHERE account_id = %s'
-    val = str(account_id), 
+    val = str(account_id),
     result = execute_fetchone(sql, val)
     qn1 = result['qn1']
     qn1_ans = result['qn1_ans']
@@ -1391,15 +1404,196 @@ def unlock_account(account_id):
         qn1_given_ans = form.qn1_ans.data
         qn2_given_ans = form.qn2_ans.data
         if qn1_given_ans == qn1_ans and qn2_given_ans == qn2_ans:
-            sql = "DELETE FROM account_status WHERE account_id = %s"
+            sql = "UPDATE account_status SET locked_status = 'unlocked', failed_attempts = 0 WHERE account_id = %s"
             execute_commit(sql, val)
             return 'Account has been unlocked, return to login page'
         else:
             wrong_answer = True
             return render_template('/processes/unlock_account.html', form=form, qn1=qn1, qn2=qn2, wrong_answer=wrong_answer, account_id=account_id)
-        
+
     return render_template('/processes/unlock_account.html', form=form, qn1=qn1, qn2=qn2, wrong_answer=wrong_answer, account_id=account_id)
 
+@app.route('/verify-as-educator', methods=['GET', 'POST'])
+@check_security_questions
+def verify_as_educator():
+    request_success = False
+    form = verify_as_educator_form(request.form)
+    sql = 'SELECT * FROM verify_as_educator_request WHERE account_id = %s'
+    val = str(session['login_id']),
+    result = execute_fetchall(sql, val)
+    if result:
+        request_success = True
+
+    if request.method == 'POST' and form.validate():
+        employee_id = form.employee_id.data
+        department = form.department.data
+        sql = 'INSERT INTO verify_as_educator_request (account_id, employee_id, department) VALUES (%s, %s, %s)'
+        val = (str(session['login_id']), employee_id, department)
+        execute_commit(sql, val)
+        request_success = True
+    return render_template('/processes/verify_as_educator.html', form=form, request_success=request_success)
+
+
+@app.route('/admin-login', methods=['GET', 'POST'])
+def admin_login():
+    form = login_form(request.form)
+    account_locked = False
+    invalid_pass_or_username = False
+
+    if request.method == 'POST' and form.validate():
+        try:
+            username = request.form['username']
+            password = request.form['password']
+            result = execute_fetchone("SELECT * FROM accounts WHERE username = %s AND class = 'administrator'", (username,)) # Getting data from database
+        except Error as e:
+            print("Unknown error occurred while retrieving user credentials.\n", e)
+
+        if result:
+            hashed_pass = result['hashed_pass']
+            account_id = result['account_id']
+            username = result['username']
+            #If able to retrieve, continue
+            # Checking if the there's a result from the sql query and checking the value of both hash function
+            if bcrypt.check_password_hash(hashed_pass, password):
+                if checklockedstatus(account_id) == False:
+                    try:
+                        create_session('login_status', True)
+                        create_session('login_id', account_id)
+                        create_session('username', username)
+                        create_session('admin_status', True)
+                        session.permanent = True
+
+                        #Reset account status
+                        sql = 'UPDATE account_status SET failed_attempts = 0 WHERE account_id = %s AND failed_attempts < 5'
+                        val = session['login_id'],
+                        execute_commit(sql, val)
+
+                    except Error as e:
+                        print('Admin Login Failed')
+                    else:
+                        print('Admin Login Success')
+                        return redirect(url_for('admin'))
+                else:
+                    account_locked = True
+
+            elif bcrypt.check_password_hash(hashed_pass, password) == False:
+                    sql = 'SELECT * FROM account_status WHERE account_id = %s'
+                    val = account_id,
+
+                    account_status = execute_fetchone(sql, val)
+                    if account_status:
+                        sql = 'UPDATE account_status SET failed_attempts = failed_attempts + 1 WHERE account_id = %s'
+                        execute_commit(sql, val)
+
+                        failed_account = execute_fetchone('SELECT failed_attempts FROM account_status WHERE account_id = %s', (account_id,))
+                        print(failed_account)
+                        if int(failed_account['failed_attempts']) >= 5:
+                            sql = 'UPDATE account_status SET locked_status = %s WHERE account_id = %s'
+                            val = ('locked', account_id)
+                            execute_commit(sql, val)
+                            print('account with account id of:', account_id, 'has been locked')
+                            # account locked
+                            account_locked = True
+                    else:
+                        sql = 'INSERT INTO account_status (account_id, failed_attempts) VALUES (%s, 1)'
+                        execute_commit(sql, val)
+
+            invalid_pass_or_username = True
+
+    return render_template('/processes/admin_login.html', form=form, account_locked=account_locked, invalid_pass_or_username=invalid_pass_or_username)
+
+@app.route('/superadmin-login', methods=['GET', 'POST'])
+def superadmin_login():
+    invalid_pass_or_username = False
+    form = login_form(request.form)
+    if request.method == 'POST' and form.validate():
+        username = form.username.data
+        secret_key = form.password.data
+        if username == 'superadmin' and secret_key == admin_secret_key:
+            create_session('login_status', True)
+            create_session('login_id', -1)
+            create_session('username', username)
+            create_session('admin_status', True)
+            create_session('superadmin_status', True)
+            session.permanent = True
+
+            return redirect(url_for('superadmin'))
+
+        else:
+            invalid_pass_or_username = True
+
+    return render_template('/processes/superadmin_login.html', form=form, invalid_pass_or_username=invalid_pass_or_username)
+
+@app.route('/admin')
+@admin_login_required
+def admin():
+    locked_accounts = execute_fetchall("SELECT * FROM accounts a INNER JOIN account_status ac ON a.account_id = ac.account_id WHERE ac.locked_status = 'locked'")
+    verify_as_educator_requests = execute_fetchall("SELECT * FROM accounts a INNER JOIN verify_as_educator_request v ON a.account_id = v.account_id")
+    reported_posts = execute_fetchall("SELECT * FROM posts p INNER JOIN report_post r ON p.post_id = r.post_id INNER JOIN accounts a ON a.account_id = p.account_id ORDER BY r.report_timestamp desc")
+    return render_template('processes/admin.html', locked_accounts=locked_accounts, verify_as_educator_requests=verify_as_educator_requests, reported_posts=reported_posts)
+
+@app.route('/superadmin', methods=['GET', 'POST'])
+@superadmin_login_required
+def superadmin():
+    username_unique = None
+    email_unique = None
+    password_same = None
+    valid_privilege_level = None
+    admin_creation_success = None
+
+    form = create_admin_form(request.form)
+    admin_list = execute_fetchall("SELECT * FROM accounts ac INNER JOIN administrators ad ON ac.account_id = ad.account_id WHERE class = 'administrator' ORDER BY ad.privilege_level desc")
+    if request.method == 'POST' and form.validate():
+        username = form.username.data
+        email = form.email.data
+        password = form.password.data
+        reenterpassword = form.reenterpassword.data
+        privilege_level = form.privilege_level.data
+
+        result = execute_fetchall('SELECT * FROM accounts WHERE username = %s', (username, ))
+        if result:
+            username_unique = False
+        else:
+            username_unique = True
+        result = execute_fetchall('SELECT * FROM accounts WHERE school_email = %s', (email, ))
+        if result:
+            email_unique = False
+        else:
+            email_unique = True
+        if password == reenterpassword:
+            password_same = True
+            hashed_pass = bcrypt.generate_password_hash(password)
+        else:
+            password_same = False
+        if int(privilege_level) >= 1 and int(privilege_level) <= 10:
+            valid_privilege_level = True
+        else:
+            valid_privilege_level = False
+
+        if username_unique and email_unique and password_same and valid_privilege_level:
+            sql = 'INSERT INTO accounts (username, school_email, hashed_pass, class) VALUES (%s, %s, %s, %s)'
+            val = (username, email, hashed_pass, 'administrator')
+            execute_commit(sql, val)
+            result = execute_fetchone('SELECT * FROM accounts WHERE username = %s', (username, ))
+            account_id = result['account_id']
+            sql = 'INSERT INTO administrators (account_id, privilege_level) VALUES (%s, %s)'
+            val = (str(account_id), int(privilege_level))
+            execute_commit(sql, val)
+            admin_creation_success = True
+        else:
+            admin_creation_success = False
+
+    return render_template('/processes/superadmin.html', form=form, admin_list=admin_list, admin_creation_success=admin_creation_success)
+
+@app.route('/admin-unlock-account/<account_id>')
+@admin_login_required
+def admin_unlock_account(account_id):
+    pass
+
+@app.route('/grant-educator-verification/<account_id>')
+@admin_login_required
+def grant_educator_verification(account_id):
+    pass
 
 if __name__ == '__main__':
     app.run(debug=True)

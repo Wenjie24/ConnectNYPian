@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block title%}Verify As Educator{% endblock %}
+
+{% block content %}
+{% from "includes/formHelper.html" import render_field %}
+
+<div class="container-fluid w-75">
+    <div class="row justify-content-center"> 
+    <h4 style="text-align:center">Verify your account as an NYP Educator</h4>
+      <hr style="width: 67%; margin-top:5px;">
+        <div class="bg-light rounded p-3 col-md-8 col-md-offset-2" style="margin-top: 5px;"> 
+        {% if request_success == False %}
+          <form action="/verify-as-educator" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+              <div class="form-group">
+                  {{ render_field(form.employee_id, class="form-control") }}
+              </div>
+              <br>
+              <div class="form-group">
+                  {{ render_field(form.department, class="form-control") }}
+              </div>
+              
+              <br>
+              <div class="form-group">
+                  <button type="submit" class="btn btn-primary">
+                      Submit Verification Request
+                  </button>
+              </div>
+          </form>
+          {% else %}
+          <p style="text-align: center; margin-top:30px; margin-bottom:30px">Request submitted successfully. You will be contacted via email once the verification is successful.</p>
+          {% endif %}
+      </div>
+    </div>
+  </div>
+
+
+{% endblock %}

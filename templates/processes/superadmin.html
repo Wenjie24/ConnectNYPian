@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block title%}SuperAdmin{% endblock %}
+
+{% block content %}
+{% from "includes/formHelper.html" import render_field %}
+<div class="container justify-content-center">
+    <h2>SUPERADMIN PANEL</h2>
+    <br>
+<form action="/superadmin" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    {{ render_field(form.username, class="form-control")}}
+    {{ render_field(form.email, class="form-control")}}
+    {{ render_field(form.password, class="form-control")}}
+    {{ render_field(form.reenterpassword, class="form-control")}}
+    {{ render_field(form.privilege_level, class="form-control")}}
+    <br>
+    <button class="btn btn-primary">Create Admin</button>
+</form>
+{% if admin_creation_success %}
+<h5>NEW ADMIN CREATED</h5>
+{% endif %}
+<br><br>
+<div class="col-md-4" style="width: 480px;">
+    <h3>ADMIN LIST</h3>
+    {% for admin in admin_list %}
+    <div class="card mb-3 shadow-sm">
+      <div class="card-body">
+        <h4 class="card-text">
+          Username: {{admin.username}}
+        </h4>
+        <h4 class="card-text">
+          Privilege level: {{admin.privilege_level}}
+        </h4>
+      </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
