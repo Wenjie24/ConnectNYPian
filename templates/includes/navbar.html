@@ -1,3 +1,15 @@
+<script>
+    $(document).ready(() => {
+        $('.info').on('submit', () => {
+            return false;
+        });
+    });
+    $('.d-flex').keypress((e) => {
+        if (e.which === 13) {
+            $('.info').submit();
+        }
+    })
+</script>
 <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top" aria-label="Tenth navbar example" style="z-index: 2; outline-style:solid; outline-color:grey; outline-width:1px;">
     <a class="nav-link" style="margin-right: 30px; color: rgb(0, 0, 0); font-size: 20px; font-family:'OCR A';margin-left:60px" href="/">ConnectNYPian</a>
     
@@ -64,19 +76,11 @@
             text-indent: 30px;
         }
     </style>
-    <script>
-        $(document).ready(() => {
-            $('.info').on('submit', () => {
-                return false;
-            });
-        });
-        $('.d-flex').keypress((e) => {
-            if (e.which === 13) {
-                $('.info').submit();
-            }
-        })
-    </script>
     </div>
+    {% endif %}
+    {% if 'admin_status' in session %}
+    <a class="nav-link" href="/admin" style="margin-right:40px">Admin Panel</a>
+    <a class="nav-link" style="margin-right: 30px; margin-left: 20px; color:red" href="/logout">Logout</a>
     {% endif %}
 </nav>
 <br>

@@ -4,7 +4,7 @@
 {% block content %}
 {% from "includes/formHelper.html" import render_field %}
 {% if not is_blocked %}
-<main class="container" style="max-width: 1000px;">
+<main class="container" style="max-width: 1050px;">
   <!--
 
     3. Profile Page !!PLACEHOLDER!!
@@ -21,13 +21,13 @@
   -->
 
   <div class="row justify-content-center">
-    <div class="col-md-4" style="width: 430px;">
+    <div class="col-md-4" style="width: 500px;">
       <div class="card shadow-sm">
         <a href="#" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="width:30px; margin-left:17px; margin-top:10px"><img src="/static/images/more.png" style="width: 22px"></a>
         <div class="dropdown-menu" aria-labelledby="dropdownMenuLink" style="float:right;">
           {% if is_owner %}
           <a class="dropdown-item" href="/edit_profile">Edit Profile</a>
-          <a class="dropdown-item" href="/send_reset_pass">Reset Password</a>
+          <a class="dropdown-item" href="/send_reset_pass" data-toggle="modal" data-target=".bd-example-modal-sm">Reset Password</a>
           {% if account_class == 'student' %}
           <a class="dropdown-item" href="/verify-as-educator">Verify as Educator</a>
           {% endif %}
@@ -85,19 +85,8 @@
           <p class="card-text col">
             <b>Followers:</b> {{followers}}
           </p>
-          <p class="card-text">
-            <b>Posts:</b> {{post_no}}
-          </p>
           {% if is_owner %}
-          <div class="d-flex justify-content-between align-items-center">
-            <div class="btn-group">
-              <button type="button" class="btn btn-primary" data-toggle="modal" data-target=".bd-example-modal-sm">Reset password</button>
-
-
-            </div>
-          </div>
-
-
+  
           <div class="modal fade bd-example-modal-sm" tabindex="-1" role="dialog" aria-labelledby="mySmallModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-sm">
 
@@ -116,8 +105,9 @@
         </div>
       </div>
     </div>
-
-    <div class="col-md-6">
+<br>
+<br>
+    <div class="col-md-4" style="width: 480px;">
       {% if is_owner %}
       <h3 style="margin-bottom: 20px;">My Posts ({{post_no}})</h3>
       {% else %}
