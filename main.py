@@ -342,7 +342,7 @@ def before_request():
                 remove_all_session_user()
                 remove_all_session_superadmin_or_admin()
 
-        print(session['admin_status'])
+        #print(session['admin_status'])
 
         if check_session('admin_status'): # For normal user
 

@@ -52,7 +52,7 @@
         {% endif %}
         <div class="card-body" style="margin-left: 30px;">
           <p class="card-text">
-            <b>Username:</b> {{username}}
+            <b>Username:</b> {{username}} {% if account_class == 'educator' %} (Educator) {% endif %}</p> 
           </p>
 
           {% if is_owner %}

@@ -22,7 +22,7 @@
       <div class="col">
     <a href="/user/{{post.account_id}}" style="text-decoration: none; color: black;">
     <img src="/static/images/person-circle.svg" alt="avatar" class="rounded-circle img-fluid" style="width: 30px; float: left; margin-right: 10px">
-    <p style="font-size: 20px">{{post.username}}</p>
+    <p style="font-size: 20px">{{post.username}}{% if post.class == 'educator' %} (Educator) {% endif %}</p> 
       </a>
       </div>
         {% if post.account_id == session['login_id'] %}
