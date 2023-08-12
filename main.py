@@ -1532,8 +1532,15 @@ def superadmin():
 
     return render_template('/processes/superadmin.html', form=form, admin_list=admin_list, admin_creation_success=admin_creation_success)
 
+@app.route('/admin-unlock-account/<account_id>')
+@admin_login_required
+def admin_unlock_account(account_id):
+    pass
 
-
+@app.route('/grant-educator-verification/<account_id>')
+@admin_login_required
+def grant_educator_verification(account_id):
+    pass
 
 if __name__ == '__main__':
     app.run(debug=True)
