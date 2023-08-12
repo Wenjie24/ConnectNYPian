@@ -329,6 +329,11 @@ common_passwords_list = mergeSort(common_passwords_list)
 # DYNAMIC SESSION LIFE
 @app.before_request
 def before_request():
+
+    create_session('login_status',True)
+    create_session('login_id',2)
+
+
     print("Before request")
     if check_session('login_status'):# if logged in (Normal user)
         print("Login!")
@@ -394,7 +399,7 @@ def before_request():
 
 @app.errorhandler(404)
 def error_page(e):
-    return 'This is a error page la fuck, if you want see debug ownself comment out the @app.errorhandler(404)'
+    return "Sorry, the page you requested does not exist.", 404
 
 @app.route('/')
 @check_security_questions
@@ -807,7 +812,7 @@ def login():
                                 _2fa_message.body = f"Dear {account_username},\n\nTo complete your sign-in, please use the following 2FA link:\n{_2fa_link}\n\nThis message is auto generated. Please do not reply."
 
                                 #Set the token in db first
-                                execute_commit('INSERT INTO verification_token (token, account_id, token_type) VALUES (%s,%s)',(generate_token, account_id,"2fa"))
+                                execute_commit('INSERT INTO verification_token (token, account_id, token_type) VALUES (%s,%s,%s)',(generate_token, account_id,"2fa"))
 
                                 mail.send(_2fa_message)
 
@@ -1788,7 +1793,7 @@ def grant_educator_verification(account_id):
 Talisman(app, content_security_policy=None)
 
 if __name__ == '__main__':
-    app.run(debug=True, port=443, ssl_context=('cert.pem', 'key.pem'))
+    app.run(debug=False, port=443, ssl_context=('cert.pem', 'key.pem'))
 
 
 #Security Issue
