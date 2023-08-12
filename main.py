@@ -35,8 +35,8 @@ app.config['RECAPTCHA_PUBLIC_KEY'] = '6LfegionAAAAACW8DE2INwUbd3jnroCdrtrYhlYc'
 app.config['RECAPTCHA_PRIVATE_KEY'] = '6LfegionAAAAAAAqNiLqaVAF_S2k0jtjvgXZ-CK1'
 #app.config['TESTING'] = True #To disable captcha
 
-admin_secret_key = '2d9b0f816ffdb77b8e09a46eaf30a1ec9077435a5073cd791aa397729ade5fc7b9a22888c978111461ab1345055b380d3d7571ce6120c8845a10e9f441cededc'
-
+#admin_secret_key = '2d9b0f816ffdb77b8e09a46eaf30a1ec9077435a5073cd791aa397729ade5fc7b9a22888c978111461ab1345055b380d3d7571ce6120c8845a10e9f441cededc'
+admin_secret_key = '123'
 
 #Intialize MYSQL
 mysql = MySQL(app)
@@ -139,7 +139,7 @@ def remove_session(session_key):
     except Error as e:
         print("An error occurred while popping session.\n", e)
 
-def remove_all_session():
+def remove_all_session_user():
     try:
         remove_session('login_status')
         remove_session('login_id')
@@ -147,6 +147,17 @@ def remove_all_session():
         remove_session('latest_reset_token')
     except Exception:
         print("Error in function; remove all session")
+    else:
+        return True
+
+def remove_all_session_superadmin_or_admin():
+    try:
+        remove_session('login_status')
+        remove_session('login_id')
+        remove_session('admin_status')
+        remove_session('superadmin_status')
+    except Exception:
+        print('Error in function; remove all session super or admin')
     else:
         return True
 
@@ -215,7 +226,14 @@ def check_security_questions(f):
     def wrap(*args, **kwargs):
         if check_login_status():
             if 'superadmin_status' in session:
+
+                print("super admin!")
                 return redirect(url_for('superadmin'))
+            elif 'admin_status' in session:
+                print('admin!')
+                return redirect(url_for('admin'))
+
+
             sql = 'SELECT * FROM security_questions WHERE account_id = %s'
             val = str(session['login_id']),
             result = execute_fetchone(sql, val)
@@ -225,7 +243,8 @@ def check_security_questions(f):
                 return redirect(url_for('create_security_questions'))
 
             return f(*args, **kwargs)
-        else: return redirect(url_for('signup'))
+        else:
+            return redirect(url_for('signup'))
     return wrap
 
 def mergeSort(theList):
@@ -307,39 +326,58 @@ common_passwords_list = mergeSort(common_passwords_list)
 # DYNAMIC SESSION LIFE
 @app.before_request
 def before_request():
-
-    if check_login_status():# if logged in
-
-        # Dynamic session life_time for inactivity for 5min
+    print("Before request")
+    if check_session('login_status'):# if logged in (Normal user)
+        print("Login!")
         session.permanent = True
-        app.permanent_session_lifetime = timedelta(minutes=5)
-        print(app.permanent_session_lifetime, ' - session time resetted!')
 
-        #Check if user still exist, if not just log them out
-        user_tuple = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s',(session['login_id'],))
+
+        # Check if user still exist, if not just log them out (To ensure user id is valid in db)
+        user_tuple = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s', (session['login_id'],))
         if user_tuple == None:
-            remove_all_session()
+            remove_all_session_user()
+            remove_all_session_superadmin_or_admin()
 
-        #if latest reset token is in session
-        reset_token_tuple = execute_fetchone(
-            'SELECT * FROM verification_token WHERE token_type = "reset" and account_id = %s AND used_boolean = True ORDER BY timecreated DESC LIMIT 1',
-            (session['login_id'],))
 
-        if reset_token_tuple != None: # If there is latest token
-            try:
-                latest_reset_token = session['latest_reset_token']
-            except:
-                #If there is no reset token, kick the user out too
-                # Because there is reset_token_tuple in the db
-                print("There is no reset token!")
-                remove_all_session()
-            else:
-                #IF there is reset token, check the value
-                if latest_reset_token == reset_token_tuple['TOKEN']:
-                    print("Reset token is the same! Account is valid")
+        if not check_session('admin_status') or not check_session('superadmin_status'): # For normal user
+            # Dynamic session life_time for inactivity for 5min
+            app.permanent_session_lifetime = timedelta(minutes=5)
+            print(app.permanent_session_lifetime, ' - session time resetted!')
+
+
+
+            # if latest reset token is in session
+            reset_token_tuple = execute_fetchone(
+                'SELECT * FROM verification_token WHERE token_type = "reset" and account_id = %s AND used_boolean = True ORDER BY timecreated DESC LIMIT 1',
+                (session['login_id'],))
+
+            if reset_token_tuple != None:  # If there is latest token
+                try:
+                    latest_reset_token = session['latest_reset_token']
+                except:
+                    # If there is no reset token, kick the user out too
+                    # Because there is reset_token_tuple in the db
+                    print("There is no reset token!")
+                    remove_all_session_user()
                 else:
-                    print("Account not valid! kIck him out")
-                    remove_all_session()
+                    # IF there is reset token, check the value
+                    if latest_reset_token == reset_token_tuple['TOKEN']:
+                        print("Reset token is the same! Account is valid")
+                    else:
+                        print("Account not valid! kIck him out")
+                        remove_all_session_user()
+
+        else:
+            #If it is admin_status or superadmin_status
+            app.permanent_session_lifetime = timedelta(minutes=1) #One minute time out
+            print(app.permanent_session_lifetime, ' - session time resetted!')
+
+
+
+
+
+
+
 
 
 
@@ -352,6 +390,12 @@ def error_page(e):
 @app.route('/')
 @check_security_questions
 def home():
+    print("home!")
+    if 'superadmin_status' in session:
+        return redirect(url_for('superadmin'))
+    elif 'admin_status' in session:
+        return redirect(url_for('admin'))
+
     # Extract all the post from sql
     if check_login_status(): #Check for login
         print("logged in")
@@ -365,6 +409,7 @@ def home():
         print('liked posts by user (post_id):', liked_posts)
         return render_template('index.html', feed=feed, liked_posts=liked_posts)
     else:
+
         print("Redirecting to sign up")
         return redirect(url_for('signup'))
 
@@ -542,7 +587,15 @@ def confirm_email(token):
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
+    if 'superadmin_status' in session:
+        return redirect(url_for('superadmin'))
+    elif 'admin_status' in session:
+        return redirect(url_for('admin'))
+
+
     if check_login_status():
+
+
         return redirect(url_for('home'))
 
     #Declare username/email error/signup_status for error message
@@ -659,7 +712,13 @@ def signup():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    if 'superadmin_status' in session:
+        return redirect(url_for('superadmin'))
+    elif 'admin_status' in session:
+        return redirect(url_for('admin'))
+
     if check_login_status():
+
         return redirect(url_for('home'))
 
 
@@ -823,7 +882,8 @@ def login():
 
 @app.route('/logout')
 def logout():
-    remove_all_session()
+    remove_all_session_user()
+    remove_all_session_superadmin_or_admin()
     return redirect(url_for('home'))
 
 
@@ -1048,7 +1108,7 @@ def send_reset_pass():
 
                             return 'LOCKING UR ACCOUNT AND SEND EMAIL'
                 else:
-                    remove_all_session()
+                    remove_all_session_user()
                     return 'account locked please contact admin'
 
 
@@ -1108,7 +1168,7 @@ def reset_pass_confirmed(token):
                         #If reset pass, delete all session on the device
 
 
-                        remove_all_session()
+                        remove_all_session_user()
 
                         return 'password updated, please log in again'
 
@@ -1436,6 +1496,12 @@ def verify_as_educator():
 
 @app.route('/admin-login', methods=['GET', 'POST'])
 def admin_login():
+
+    if 'superadmin_status' in session:
+        return redirect(url_for('superadmin'))
+    elif 'admin_status' in session:
+        return redirect(url_for('admin'))
+
     form = login_form(request.form)
     account_locked = False
     invalid_pass_or_username = False
@@ -1457,11 +1523,12 @@ def admin_login():
             if bcrypt.check_password_hash(hashed_pass, password):
                 if checklockedstatus(account_id) == False:
                     try:
+
+                        remove_all_session_user()
+
                         create_session('login_status', True)
                         create_session('login_id', account_id)
-                        create_session('username', username)
                         create_session('admin_status', True)
-                        session.permanent = True
 
                         #Reset account status
                         sql = 'UPDATE account_status SET failed_attempts = 0 WHERE account_id = %s AND failed_attempts < 5'
@@ -1504,18 +1571,28 @@ def admin_login():
 
 @app.route('/superadmin-login', methods=['GET', 'POST'])
 def superadmin_login():
+
+    if 'superadmin_status' in session:
+        return redirect(url_for('superadmin'))
+    elif 'admin_status' in session:
+        return redirect(url_for('admin'))
+
+
     invalid_pass_or_username = False
     form = login_form(request.form)
     if request.method == 'POST' and form.validate():
         username = form.username.data
         secret_key = form.password.data
         if username == 'superadmin' and secret_key == admin_secret_key:
+
+            # Remove all normal user session
+            remove_all_session_user()
+
             create_session('login_status', True)
             create_session('login_id', -1)
-            create_session('username', username)
+            #create_session('username', username) No need for username
             create_session('admin_status', True)
             create_session('superadmin_status', True)
-            session.permanent = True
 
             return redirect(url_for('superadmin'))
 
@@ -1542,6 +1619,7 @@ def superadmin():
     admin_creation_success = None
 
     form = create_admin_form(request.form)
+
     admin_list = execute_fetchall("SELECT * FROM accounts ac INNER JOIN administrators ad ON ac.account_id = ad.account_id WHERE class = 'administrator' ORDER BY ad.privilege_level desc")
     if request.method == 'POST' and form.validate():
         username = form.username.data
