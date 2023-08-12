@@ -340,7 +340,7 @@ def before_request():
                 remove_all_session_user()
                 remove_all_session_superadmin_or_admin()
 
-        print(session['admin_status'])
+
 
         if check_session('admin_status'): # For normal user
 
@@ -447,7 +447,7 @@ def school_home():
 def user(id):
     if check_login_status(): #Check for login status
         try:
-            account_type_tuple = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s',(id,))
+            account_type_tuple = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s AND class != "administrator"',(id,))
             account_type = account_type_tuple['class']
 
 
@@ -474,7 +474,8 @@ def user(id):
             following = execute_fetchall('SELECT count(*) following FROM follow_account WHERE follower_id = %s', (id,))
             followers = execute_fetchall('SELECT count(*) followers FROM follow_account WHERE followee_id = %s', (id,))
             post_no = execute_fetchall('SELECT count(*) posts FROM posts WHERE account_id = %s', (id,))
-        except Error as e: # if error
+        except Exception: # if error
+            return 'No such user page'
             print("error retrieving account id")
             #Redirect to error page
         else: # if able to retrieve
@@ -759,7 +760,7 @@ def login():
             # Retrieve User Credential in the form
             username = request.form['username']
             password = request.form['password']
-            result = execute_fetchone('SELECT * FROM accounts WHERE username = %s', (username,)) # Getting data from database
+            result = execute_fetchone('SELECT * FROM accounts WHERE username = %s AND class != "administrator"', (username,)) # Getting data from database
         except Error as e:
             print("Unknown error occurred while retrieving user credential.\n", e)
         else:
