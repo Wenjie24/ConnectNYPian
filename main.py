@@ -14,6 +14,7 @@ from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from functools import wraps
 from apscheduler.schedulers.background import BackgroundScheduler
+from flask_talisman import Talisman
 
 import pyotp
 import os
@@ -1783,8 +1784,11 @@ def grant_educator_verification(account_id):
     return redirect(url_for('admin'))
 
 
+#Ensure all connection are https
+Talisman(app, content_security_policy=None)
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=443, ssl_context=('cert.pem', 'key.pem'))
 
 
 #Security Issue
