@@ -330,8 +330,8 @@ common_passwords_list = mergeSort(common_passwords_list)
 @app.before_request
 def before_request():
 
-    create_session('login_status',True)
-    create_session('login_id',2)
+    #create_session('login_status',True)
+    #create_session('login_id',2)
 
 
     print("Before request")
@@ -1232,7 +1232,7 @@ def createpost():
 
     return render_template('/processes/createpost.html', form=form)
 
-@app.route('/createlike/<post_id>/')
+@app.route('/createlike/<int:post_id>/')
 @check_security_questions
 def createlike(post_id):
     try:
@@ -1248,7 +1248,7 @@ def createlike(post_id):
     except Error as e:
         print("Error creating like: ", e)
 
-@app.route('/removelike/<post_id>')
+@app.route('/removelike/<int:post_id>')
 @check_security_questions
 def removelike(post_id):
     try:
@@ -1264,7 +1264,7 @@ def removelike(post_id):
     except Error as e:
         print("Error removing like: ", e)
 
-@app.route('/deletepost/<post_id>')
+@app.route('/deletepost/<int:post_id>')
 @check_security_questions
 def deletepost(post_id):
     try:
@@ -1292,7 +1292,7 @@ def deletepost(post_id):
     except Error as e:
         print("Error deleting post: ", e)
 
-@app.route('/comments/<post_id>', methods=['GET', 'POST'])
+@app.route('/comments/<int:post_id>', methods=['GET', 'POST'])
 @check_security_questions
 def comments(post_id):
     try:
@@ -1332,7 +1332,7 @@ def comments(post_id):
     except Error as e:
         print('Error creating comment: ', e)
 
-@app.route('/deletecomment/<post_id>/<comment_id>')
+@app.route('/deletecomment/<int:post_id>/<comment_id>')
 @check_security_questions
 def deletecomment(post_id, comment_id):
     try:
@@ -1378,7 +1378,7 @@ def create_security_questions():
     except Error as e:
         print("Error creating security qns:", e)
 
-@app.route('/follow/<account_id>')
+@app.route('/follow/<int:account_id>')
 @check_security_questions
 def follow_account(account_id):
     try:
@@ -1395,7 +1395,7 @@ def follow_account(account_id):
     except Error as e:
         print('Error following account:', e)
 
-@app.route('/unfollow/<account_id>')
+@app.route('/unfollow/<int:account_id>')
 @check_security_questions
 def unfollow_account(account_id):
     try:
@@ -1412,7 +1412,7 @@ def unfollow_account(account_id):
     except Error as e:
         print('Error following account:', e)
 
-@app.route('/block/<account_id>')
+@app.route('/block/<int:account_id>')
 @check_security_questions
 def block(account_id):
     try:
@@ -1440,7 +1440,7 @@ def block(account_id):
     except Error as e:
         print('Error blocking account:', e)
 
-@app.route('/unblock/<account_id>')
+@app.route('/unblock/<int:account_id>')
 @check_security_questions
 def unblock(account_id):
     try:
@@ -1458,7 +1458,7 @@ def unblock(account_id):
     except Error as e:
         print('Error unblocking account:', e)
 
-@app.route('/report-post/<post_id>', methods=['GET', 'POST'])
+@app.route('/report-post/<int:post_id>', methods=['GET', 'POST'])
 @check_security_questions
 def report_post(post_id):
     try:
@@ -1477,7 +1477,7 @@ def report_post(post_id):
     except Error as e:
         print('Error reporting user:', e)
 
-@app.route('/unlock-account/<account_id>', methods=['GET', 'POST'])
+@app.route('/unlock-account/<int:account_id>', methods=['GET', 'POST'])
 def unlock_account(account_id):
     wrong_answer = None
     form = unlock_account_form(request.form)
@@ -1769,7 +1769,7 @@ def superadmin():
 
     return render_template('/processes/superadmin.html', form=form, admin_list=admin_list, admin_creation_success=admin_creation_success)
 
-@app.route('/admin-unlock-account/<account_id>')
+@app.route('/admin-unlock-account/<int:account_id>')
 @admin_login_required
 def admin_unlock_account(account_id):
     execute_commit("UPDATE account_status SET locked-status ='unlocked', failed_attempts=0 WHERE account_id = %s", (str(account_id), ))
