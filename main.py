@@ -806,7 +806,7 @@ def login():
                                 _2fa_message.body = f"Dear {account_username},\n\nTo complete your sign-in, please use the following 2FA link:\n{_2fa_link}\n\nThis message is auto generated. Please do not reply."
 
                                 #Set the token in db first
-                                execute_commit('INSERT INTO verification_token (token, account_id) VALUES (%s,%s)',(generate_token, account_id))
+                                execute_commit('INSERT INTO verification_token (token, account_id, token_type) VALUES (%s,%s)',(generate_token, account_id,"2fa"))
 
                                 mail.send(_2fa_message)
 
@@ -1556,16 +1556,27 @@ def admin_login():
                 if checklockedstatus(account_id) == False:
                     try:
 
-                        remove_all_session_user()
+                        # Send 2FA token
+                        account_tuple = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s', (account_id,))
+                        account_email = account_tuple['school_email']
+                        account_username = account_tuple['username']
+                        generate_token = serializer.dumps(account_email, salt='2fa')
+                        _2fa_link = url_for('admin_login_2fa', token=generate_token, _external=True)
 
-                        create_session('login_status', True)
-                        create_session('login_id', account_id)
-                        create_session('admin_status', True)
+                        _2fa_message = Message(f'Admin: {account_username} | Sign-in with 2FA Token', sender='ConnectNYPian@gmail.com',
+                                               recipients=['connectnypian.test.receive@gmail.com'])
 
-                        #Reset account status
-                        sql = 'UPDATE account_status SET failed_attempts = 0 WHERE account_id = %s AND failed_attempts < 5'
-                        val = session['login_id'],
-                        execute_commit(sql, val)
+                        _2fa_message.body = f"Dear {account_username},\n\nTo complete your sign-in as Administrator, please use the following 2FA link:\n{_2fa_link}\n\nThis message is auto generated. Please do not reply."
+
+                        # Set the token in db first
+                        execute_commit('INSERT INTO verification_token (token, account_id, token_type) VALUES (%s,%s,"2fa")',
+                                       (generate_token, account_id))
+
+                        mail.send(_2fa_message)
+
+                        return f'2fa token sent to {account_email}'
+
+
 
                     except Error as e:
                         print('Admin Login Failed')
@@ -1600,6 +1611,55 @@ def admin_login():
             invalid_pass_or_username = True
 
     return render_template('/processes/admin_login.html', form=form, account_locked=account_locked, invalid_pass_or_username=invalid_pass_or_username)
+
+@app.route('/admin_login_2fa/<token>')
+def admin_login_2fa(token):
+    try:
+        serialized = serializer.loads(token, salt='2fa', max_age=300)
+    except BadSignature:
+        return ' brother this one bad signature'
+    except SignatureExpired:
+        return ' brother next time verify faster'
+    else:
+        #Ensure the token is in the db first
+        token_tuple = execute_fetchone('SELECT * FROM verification_token WHERE token = %s', (token,))
+
+        #If token exist
+        if token_tuple != None:
+
+            #Check that token is not used
+            if token_tuple['used_boolean'] != True:
+
+
+                #Enable sign in
+                account_id = token_tuple['account_id']
+
+
+                remove_all_session_user()
+
+                create_session('login_status', True)
+                create_session('login_id', account_id)
+                create_session('admin_status', True)
+
+                #Reset account status
+                sql = 'UPDATE account_status SET failed_attempts = 0 WHERE account_id = %s AND failed_attempts < 5'
+                val = session['login_id'],
+                execute_commit(sql, val)
+
+
+                #fetch the latest reset token and set it in the session if there's one
+                reset_token_tuple = execute_fetchone('SELECT * FROM verification_token WHERE token_type = "reset" and account_id = %s AND used_boolean = True ORDER BY timecreated DESC LIMIT 1',(account_id,))
+                if reset_token_tuple != None:
+                    print(reset_token_tuple)
+                    latest_reset_token = reset_token_tuple['TOKEN']
+                    session['latest_reset_token'] = latest_reset_token
+
+                # Set the token = used
+                execute_commit('UPDATE verification_token SET used_boolean = True WHERE token = %s', (token,))
+
+                return redirect(url_for('admin'))
+            else:
+                return 'token used'
 
 @app.route('/superadmin-login', methods=['GET', 'POST'])
 def superadmin_login():
