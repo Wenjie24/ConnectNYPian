@@ -712,7 +712,7 @@ def signup():
                                 execute_commit('INSERT INTO verification_token (token, account_id, username, hashed_pass, school_email, school) VALUES (%s, %s, %s, %s, %s, %s)', (token, -1, username, hashed_password, email, school))
                                 signup_status = f'An verification token has been sent to {email}, please verify to complete the sign up.'
 
-                                message = Message(f'Email verification for {email}', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
+                                message = Message(f'{email}| Email verification Token', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
                                 verification_link = url_for('confirm_email', token=token, _external=True)
                                 message.body = f'Here is your verification link for Username: {username}\n\n{verification_link}\n\nVerification link will expire in 5 minutes.'
                                 mail.send(message)
@@ -852,7 +852,7 @@ def login():
                                         generate_token = serializer.dumps(account_email, salt='2fa')
                                         _2fa_link = url_for('login_2fa', token=generate_token, _external=True)
 
-                                        _2fa_message = Message('Sign-in with 2FA Token', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
+                                        _2fa_message = Message(f'{account_email} | Sign-in with 2FA Token', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
 
                                         _2fa_message.body = f"Dear {account_username},\n\nTo complete your sign-in, please use the following 2FA link:\n{_2fa_link}\n\nThis message is auto generated. Please do not reply."
 
@@ -920,6 +920,11 @@ def login():
                                 sql = 'UPDATE account_status SET failed_attempts = failed_attempts + 1 WHERE account_id = %s'
                                 execute_commit(sql, val)
 
+                                # Get email
+                                account_tuple = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s',
+                                                                 (account_id,))
+                                account_email = account_tuple['school_email']
+
                                 failed_account = execute_fetchone('SELECT failed_attempts FROM account_status WHERE account_id = %s', (account_id,))
                                 print(failed_account)
                                 if int(failed_account['failed_attempts']) >= 5:
@@ -928,9 +933,12 @@ def login():
                                     val = ('locked', account_id)
                                     execute_commit(sql, val) #Lock the user account
 
+
+
+
                                     #Generate a account locking email
-                                    locking_message = Message(f'Account Locked for Security Safety', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
-                                    locking_message.body = f'We have notice suspicious multiple failed login attempt from your account.\n\nTo protect your account, we have locked the account. Please contact administrator for support'
+                                    locking_message = Message(f'{account_email} | Account Locked for Security Safety', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
+                                    locking_message.body = f'Dear{username},\n\nWe have notice suspicious multiple failed login attempt from your account.\n\nTo protect your account, we have locked the account. Please contact administrator for support'
                                     mail.send(locking_message)
 
 
@@ -938,8 +946,8 @@ def login():
                                     # account locked
                                     account_locked = True
                                 elif int(failed_account['failed_attempts']) == 3: # If 3 login failed attempt, generate message to warn user
-                                    warning_message = Message(f'Suspicious Login Attempt Reported', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
-                                    warning_message.body = f'We have notice multiple failed login attempt from your account.\n\nIf it is not you, Please reset your password IMMEDIATELY'
+                                    warning_message = Message(f'{account_email} | Suspicious Login Attempt Reported', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
+                                    warning_message.body = f'Dear{username},\n\nWe have notice multiple failed login attempt from your account.\n\nIf it is not you, Please reset your password IMMEDIATELY'
                                     mail.send(warning_message)
 
 
@@ -1144,7 +1152,7 @@ def send_reset_pass():
                                 token = serializer.dumps(email, salt='reset')
 
                                 #prepare message
-                                message = Message(f'Reset Password', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
+                                message = Message(f'{email} | Reset Password', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
                                 verification_link = url_for('reset_pass_confirmed', token=token, _external=True)
                                 message.body = f'Here is your reset Link\n\n{verification_link}\n\nVerification link will expire in 5 minutes.'
                                 #send message
@@ -1171,7 +1179,7 @@ def send_reset_pass():
                                     #Set up warning token and send
                                     warning_token = serializer.dumps(email, salt='reset')
                                     warning_verification_link = url_for('reset_pass_confirmed', token=warning_token, _external=True)
-                                    warning_message = Message(f'Suspicious Password Reset Reported', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
+                                    warning_message = Message(f'{email} | Suspicious Password Reset Reported', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
                                     warning_message.body = f'We have notice suspicious password request from your account.\n\n If it is not you, Please reset your password IMMEDIATELY \n{warning_verification_link}\n\n'
                                     mail.send(warning_message)
 
@@ -1182,7 +1190,7 @@ def send_reset_pass():
 
                                 else: #if there is already a sus token and the user request again, lock the account.
 
-                                    locking_message = Message(f'Account Locked for Security Safety', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
+                                    locking_message = Message(f'{email} | Account Locked for Security Safety', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
                                     locking_message.body = f'We have notice suspicious password request from your account.\n\n To protect your account, we have locked the account. Please contact administrator for support'
                                     mail.send(locking_message)
 
