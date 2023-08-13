@@ -52,3 +52,6 @@ class create_admin_form(Form):
     password = PasswordField('Password', validators=[validators.DataRequired(), validators.regexp('^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])(?=.*[\W_]).{8,64}$', message='Password must contain at least one uppercase letter, one lowercase letter, one digit, and one special character. It should be between 8 and 64 characters in length.')])
     reenterpassword = PasswordField('Re-enter password', validators=[validators.DataRequired(), validators.regexp('^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])(?=.*[\W_]).{8,64}$', message='')])
     privilege_level = StringField('Privilege Level (1-10)', validators=[validators.DataRequired()])
+
+class send_message(Form):
+    message = TextAreaField( '', [validators.length(max=5000)], render_kw={ 'placeholder': 'Write Message . . .'})
