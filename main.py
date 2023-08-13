@@ -593,6 +593,7 @@ def confirm_email(token):
             if token_detail['token_type'] == 'signup' and token_detail['used_boolean'] == False:
                 try:
 
+
                     hashed_password = token_detail['hashed_pass']
                     email = token_detail['school_email']
                     username = token_detail['username']
@@ -682,6 +683,10 @@ def signup():
                     reenterpassword = request.form['reenterpassword']
                     school = form.school.data
                     hashed_password = bcrypt.generate_password_hash(password)  # Hash the password
+                    hashed_and_salted = bcrypt.hashpw()
+
+
+
                     email = request.form['email']
                     alnum_pw = create_alnum_pw(password)
 
