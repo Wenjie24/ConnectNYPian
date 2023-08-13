@@ -4,35 +4,46 @@
 {% block content %}
 {% from "includes/formHelper.html" import render_field %}
 <br>
-<main class="container" style="margin-top: 50px;">
-<div class="row justify-content-center">
-  <div class="col-4">
-    <div class="card">
-      <div class="card-body">
-        <h4 class="card-title" style="font-weight: bold;">SuperAdmin Login</h4>
-        <br>
-        <form action="/superadmin-login" method="POST">
-          {{ form.csrf_token }}
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-          <div class="mb-3">
-            {{ render_field(form.username, class="form-control") }}
-          </div>
-          <div class="mb-3">
-            {{ render_field(form.password, class="form-control") }}
-          </div>
 
-          {% if invalid_pass_or_username %}
-          <div class="mb-3">
-            <p style="color: red;">Invalid username or password.</p>
-          </div>
-          {% endif %}
+{% if rate_limit %}
+<div class="alert alert-warning alert-dismissible fade show text-center" role="alert">
+    <strong>SLOW DOWN!</strong> Too many requests. Please wait for a while and try again..
+    <button style='border: None;'type="button" class="close" data-dismiss="alert" aria-label="Close">
+        <span style='background-color: None;'aria-hidden="true">&times;</span>
+    </button>
+</div>
+{% endif%}
+
+<main class="container" style="margin-top: 50px;">
+  <div class="row justify-content-center">
+    <div class="col-4">
+      <div class="card">
+        <div class="card-body">
+          <h4 class="card-title" style="font-weight: bold;">SuperAdmin Login</h4>
 
           <br>
-          <button type="submit" class="btn btn-primary form-control">Login</button>
-        </form>
+          <form action="/superadmin-login" method="POST">
+            {{ form.csrf_token }}
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <div class="mb-3">
+              {{ render_field(form.username, class="form-control") }}
+            </div>
+            <div class="mb-3">
+              {{ render_field(form.password, class="form-control") }}
+            </div>
+
+            {% if invalid_pass_or_username %}
+            <div class="mb-3">
+              <p style="color: red;">Invalid username or password.</p>
+            </div>
+            {% endif %}
+
+            <br>
+            <button type="submit" class="btn btn-primary form-control">Login</button>
+          </form>
+        </div>
       </div>
     </div>
   </div>
-</div>
 </main>
 {% endblock %}
