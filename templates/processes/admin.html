@@ -4,6 +4,8 @@
 {% block content %}
 {% from "includes/formHelper.html" import render_field %}
 <div class="container row" style="margin: auto;">
+<a class="text-white btn btn-primary" href="/send_reset_pass">RESET PASSWORD</a>
+
 <div class="col">
 <h4>Locked Accounts</h4>
 {% for account in locked_accounts %}
