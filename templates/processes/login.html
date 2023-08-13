@@ -2,6 +2,8 @@
 {% block title%}Login{% endblock %}
 {% block content %}
 {% from "includes/formHelper.html" import render_field %}
+
+
 <script>
   function loading() {
     document.getElementById("submitbutton").textContent = 'Loading...'
@@ -9,11 +11,24 @@
   }
 </script>
 <br>
+
+{% if rate_limit %}
+<div class="alert alert-warning alert-dismissible fade show text-center" role="alert">
+  <strong>SLOW DOWN!</strong> Too many requests. Please wait for a while and try again..
+  <button style='border: None;'type="button" class="close" data-dismiss="alert" aria-label="Close">
+    <span style='background-color: None;'aria-hidden="true">&times;</span>
+  </button>
+</div>
+{% endif%}
+
 <main class="container" style="margin-top: 50px;">
+
 <div class="row justify-content-center">
+
   <div class="col-4">
     <div class="card">
       <div class="card-body">
+
         <h4 class="card-title" style="font-weight: bold;">Account Login<img src="/static/images/loading_icon.gif" id="loadingicon" width="80px" hidden="true"></h4>
         {% if signup_successful %}
         <p>Sign up successful for {{signup_successful}}, please log in.</p>

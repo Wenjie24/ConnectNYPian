@@ -12,6 +12,15 @@
     document.getElementById('loadingicon').hidden = false
   }
 </script>
+{% if rate_limit %}
+<div class="alert alert-warning alert-dismissible fade show text-center" role="alert">
+  <strong>SLOW DOWN!</strong> Too many requests. Please wait for a while and try again..
+  <button style='border: None;'type="button" class="close" data-dismiss="alert" aria-label="Close">
+    <span style='background-color: None;'aria-hidden="true">&times;</span>
+  </button>
+</div>
+{% endif%}
+
 <main class="container" style="max-width: 470px;">
   <!--
 
@@ -49,100 +58,111 @@
     </div> -->
 
 
-    <!-- Right Side -->
-    <div class="">
-      <div class="card">
-        <div class="card-body">
-          <h4 class="card-title" style="font-weight: bold;">Account Sign up<img src="/static/images/loading_icon.gif" id="loadingicon" width="80px" hidden="true"></h4>
-          <br>
-          <form action="/signup" method="POST">
-            {{ form.csrf_token }}
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+  <!-- Right Side -->
+  <div class="">
 
-            <div class="mb-3">
-              {% if username_error %}
-              {{ render_field(form.username, class="form-control", style="border-color: red;") }}
-              <p style="color: red">Username is taken.</p>
-              {% elif username_error == False %}
-              {{ render_field(form.username, class="form-control" , style="border-color: green;")}}
-              {% else %}
-              {{ render_field(form.username, class="form-control")}}
-              {% endif %}
-            </div>
+    <div class="card">
 
-            <div class="mb-3">
-              {% if email_error %}
-              {{ render_field(form.email, class="form-control", style="border-color: red;") }}
-              <p style="color: red">Email is taken.</p>
-              {% elif username_error == False %}
-              {{ render_field(form.email, class="form-control", style="border-color: green;") }}
-              {% else %}
-              {{ render_field(form.email, class="form-control") }}
-              {% endif %}
-              <div id="emailHelp" class="form-text">
-                <p><span style="font-size: 14px;">We'll never share your email with anyone else.</span></p>
-              </div>
-            </div>
-            
-            <div class="mb-3">
-              {{ render_field(form.school, class='form-control') }}
-            </div>
 
-            {% if password_error %}
-            <div class="mb-3">
-              {{ render_field(form.password, class="form-control", style="border-color: red;") }}
-            </div>
-
-            <div class="mb-3">
-              {{ render_field(form.reenterpassword, class="form-control", style="border-color: red;") }}
-            </div>
-            <p style="color: red">Entered passwords are not the same.</p>
-            
-            {% elif password_error == False %}
-            <div class="mb-3">
-              {{ render_field(form.password, class="form-control", style="border-color: green;") }}
-            </div>
-
-            <div class="mb-3">
-              {{ render_field(form.reenterpassword, class="form-control", style="border-color: green;") }}
-            </div>
-            
-            {% elif common_password_error %}
-
-            <div class="mb-3">
-              {{ render_field(form.password, class="form-control") }}
-            </div>
-            <p style="color: red;">Password is too common. Enter a more unique password.</p>
-
-            <div class="mb-3">
-              {{ render_field(form.reenterpassword, class="form-control") }}
-            </div>
-
-            {% else %}
-            <div class="mb-3">
-              {{ render_field(form.password, class="form-control") }}
-            </div>
-
-            <div class="mb-3">
-              {{ render_field(form.reenterpassword, class="form-control") }}
-            </div>
-            {% endif %}
-
-            <div class="mb-3">
-              {{ render_field(form.recaptcha, class="form-control") }}
-            </div>
-
-            {% if signup_status %}
-            <p style="color: green; ">{{signup_status}}</p>
-            {% endif %}
-
-            <p style="font-size: 14px;">Already have an account? <a href="/login" style="font-size:14px">Log In</a></p>
-            <button type="submit" class="btn btn-primary form-control" id="submitbutton" onclick="loading()">Sign Up</button>
-
-          </form>
+      <div class="card-body">
+        <h4 class="card-title" style="font-weight: bold;">Account Sign up<img src="/static/images/loading_icon.gif" id="loadingicon" width="80px" hidden="true"></h4>
+        <br>
+        {% if signup_status %}
+        <div class="alert alert-success" role="alert">
+          {{signup_status}}
         </div>
+        {% endif %}
+
+
+
+
+
+        <form action="/signup" method="POST">
+          {{ form.csrf_token }}
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+          <div class="mb-3">
+            {% if username_error %}
+            {{ render_field(form.username, class="form-control", style="border-color: red;") }}
+            <p style="color: red">Username is taken.</p>
+            {% elif username_error == False %}
+            {{ render_field(form.username, class="form-control" , style="border-color: green;")}}
+            {% else %}
+            {{ render_field(form.username, class="form-control")}}
+            {% endif %}
+          </div>
+
+          <div class="mb-3">
+            {% if email_error %}
+            {{ render_field(form.email, class="form-control", style="border-color: red;") }}
+            <p style="color: red">Email is taken.</p>
+            {% elif username_error == False %}
+            {{ render_field(form.email, class="form-control", style="border-color: green;") }}
+            {% else %}
+            {{ render_field(form.email, class="form-control") }}
+            {% endif %}
+            <div id="emailHelp" class="form-text">
+              <p><span style="font-size: 14px;">We'll never share your email with anyone else.</span></p>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            {{ render_field(form.school, class='form-control') }}
+          </div>
+
+          {% if password_error %}
+          <div class="mb-3">
+            {{ render_field(form.password, class="form-control", style="border-color: red;") }}
+          </div>
+
+          <div class="mb-3">
+            {{ render_field(form.reenterpassword, class="form-control", style="border-color: red;") }}
+          </div>
+          <p style="color: red">Entered passwords are not the same.</p>
+
+          {% elif password_error == False %}
+          <div class="mb-3">
+            {{ render_field(form.password, class="form-control", style="border-color: green;") }}
+          </div>
+
+          <div class="mb-3">
+            {{ render_field(form.reenterpassword, class="form-control", style="border-color: green;") }}
+          </div>
+
+          {% elif common_password_error %}
+
+          <div class="mb-3">
+            {{ render_field(form.password, class="form-control") }}
+          </div>
+          <p style="color: red;">Password is too common. Enter a more unique password.</p>
+
+          <div class="mb-3">
+            {{ render_field(form.reenterpassword, class="form-control") }}
+          </div>
+
+          {% else %}
+          <div class="mb-3">
+            {{ render_field(form.password, class="form-control") }}
+          </div>
+
+          <div class="mb-3">
+            {{ render_field(form.reenterpassword, class="form-control") }}
+          </div>
+          {% endif %}
+
+          <div class="mb-3">
+            {{ render_field(form.recaptcha, class="form-control") }}
+          </div>
+
+
+
+          <p style="font-size: 14px;">Already have an account? <a href="/login" style="font-size:14px">Log In</a></p>
+          <button type="submit" class="btn btn-primary form-control" id="submitbutton" onclick="loading()">Sign Up</button>
+
+        </form>
       </div>
     </div>
+  </div>
   </div>
 </main>
 {% endblock %}

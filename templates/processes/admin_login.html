@@ -4,6 +4,14 @@
 {% block content %}
 {% from "includes/formHelper.html" import render_field %}
 <br>
+{% if rate_limit %}
+<div class="alert alert-warning alert-dismissible fade show text-center" role="alert">
+    <strong>SLOW DOWN!</strong> Too many requests. Please wait for a while and try again..
+    <button style='border: None;'type="button" class="close" data-dismiss="alert" aria-label="Close">
+        <span style='background-color: None;'aria-hidden="true">&times;</span>
+    </button>
+</div>
+{% endif%}
 <main class="container" style="margin-top: 50px;">
 <div class="row justify-content-center">
   <div class="col-4">
