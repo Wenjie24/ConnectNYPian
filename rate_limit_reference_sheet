@@ -20,7 +20,7 @@ limiter.exempted route
 - 10/minute, 20/hour, 50/day
 
 /comment/<int:post_id>
-- 10/min, 20/hour, 50/day
+- 10/min, 50/hour, 100/day
 
 /admin_login_2fa/<token> , /confirm_email/<token>, /login_2fa/<token>, /reset_pass_confirmed/<token>
 - 1/3second

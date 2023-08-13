@@ -1294,22 +1294,25 @@ def createpost():
         return redirect(url_for('login'))
 
     form = create_post(request.form)
-
+    rate_limit = False
     if request.method == 'POST' and form.validate():
-        with limiter.limit("10/minute, 20/hour, 50/day"):
-            # assign form data to variables
-            title = form.title.data
-            body = form.body.data
-            category = form.category.data
+        try:
+            with limiter.limit("10/minute, 20/hour, 50/day"):
+                # assign form data to variables
+                title = form.title.data
+                body = form.body.data
+                category = form.category.data
 
-            # add form data to database
-            sql = "INSERT INTO posts (title, body, category, account_id) VALUES (%s, %s, %s, %s)"
-            val = (title, body, category, session['login_id'])
-            execute_commit(sql, val)
-            print("post added to database, redirecting to homepage")
-            return redirect(url_for('home'))
+                # add form data to database
+                sql = "INSERT INTO posts (title, body, category, account_id) VALUES (%s, %s, %s, %s)"
+                val = (title, body, category, session['login_id'])
+                execute_commit(sql, val)
+                print("post added to database, redirecting to homepage")
+                return redirect(url_for('home'))
+        except RateLimitExceeded:
+            rate_limit = True
 
-    return render_template('/processes/createpost.html', form=form)
+    return render_template('/processes/createpost.html', rate_limit=rate_limit, form=form)
 
 @app.route('/createlike/<int:post_id>/')
 @check_security_questions
@@ -1378,7 +1381,7 @@ def comments(post_id):
             return redirect(url_for('login'))
 
         if 'login_id' in session:
-            with limiter.limit("10/minute, 20/hour, 50/day"):
+
                 sql = 'SELECT * FROM posts INNER JOIN accounts ON posts.account_id = accounts.account_id WHERE posts.post_id = %s'
                 val = (str(post_id), )
                 post = execute_fetchone(sql, val)
@@ -1390,24 +1393,27 @@ def comments(post_id):
                 sql = 'SELECT * FROM comments INNER JOIN accounts ON comments.account_id = accounts.account_id WHERE comments.post_id = %s ORDER BY comments.comment_timestamp desc'
                 val = (str(post_id), )
                 comments = execute_fetchall(sql, val)
-
+                rate_limit = False
                 if request.method == 'POST' and form.validate():
-                    body = form.body.data
-                    form = create_comment(formdata=None)
-                    sql = "INSERT INTO comments (body, account_id, post_id) VALUES (%s, %s, %s)"
-                    val = (body, session['login_id'], post_id)
-                    execute_commit(sql, val)
-                    print("comment added to database")
-                    sql = 'UPDATE posts SET comment_count = comment_count + 1 WHERE post_id = %s'
-                    val = (post_id, )
-                    execute_commit(sql, val)
-                    sql = 'SELECT * FROM comments INNER JOIN accounts ON comments.account_id = accounts.account_id WHERE comments.post_id = %s ORDER BY comments.comment_timestamp desc'
-                    val = (str(post_id), )
-                    comments = execute_fetchall(sql, val)
-                    return render_template('/processes/comments.html', post=post, liked_posts=liked_posts, form=form, comments=comments)
+                    try:
+                        with limiter.limit("10/minute, 50/hour, 10/day"):
+                            body = form.body.data
+                            form = create_comment(formdata=None)
+                            sql = "INSERT INTO comments (body, account_id, post_id) VALUES (%s, %s, %s)"
+                            val = (body, session['login_id'], post_id)
+                            execute_commit(sql, val)
+                            print("comment added to database")
+                            sql = 'UPDATE posts SET comment_count = comment_count + 1 WHERE post_id = %s'
+                            val = (post_id, )
+                            execute_commit(sql, val)
+                            sql = 'SELECT * FROM comments INNER JOIN accounts ON comments.account_id = accounts.account_id WHERE comments.post_id = %s ORDER BY comments.comment_timestamp desc'
+                            val = (str(post_id), )
+                            comments = execute_fetchall(sql, val)
+                            return render_template('/processes/comments.html', post=post, liked_posts=liked_posts, form=form, comments=comments)
+                    except RateLimitExceeded:
+                        rate_limit = True
 
-
-        return render_template('/processes/comments.html', post=post, liked_posts=liked_posts, form=form, comments=comments)
+        return render_template('/processes/comments.html', rate_limit=rate_limit, post=post, liked_posts=liked_posts, form=form, comments=comments)
 
     except Error as e:
         print('Error creating comment: ', e)
@@ -1964,7 +1970,7 @@ def update_superadmin_sql():
 
 
 if __name__ == '__main__':
-    app.run(debug=False, port=443, ssl_context=('cert.pem', 'key.pem'))
+    app.run(debug=True, port=443, ssl_context=('cert.pem', 'key.pem'))
 
 
 #Security Issue

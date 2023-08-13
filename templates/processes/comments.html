@@ -8,6 +8,16 @@
     document.getElementById('commentbody').value = ''
   }
 </script>
+
+{% if rate_limit %}
+        <div class="alert alert-warning alert-dismissible fade show text-center" role="alert">
+            <strong>SLOW DOWN!</strong> YO CHILL OUT!! REPLY SLOWER LEH
+            <button style='border: None;'type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span style='background-color: None;'aria-hidden="true">&times;</span>
+            </button>
+        </div>
+        {% endif%}
+
 <main class="container-fluid w-75" style="max-width:800px; width: 90%;">
     <div class="bg-light p-3 rounded card" style="border-color: white ;">
         <div class="row">
