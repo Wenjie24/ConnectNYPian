@@ -15,6 +15,8 @@ from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from functools import wraps
 from apscheduler.schedulers.background import BackgroundScheduler
 from flask_talisman import Talisman
+import string
+import random
 from flask_limiter import Limiter, RateLimitExceeded
 from flask_limiter.util import get_remote_address
 
@@ -38,7 +40,6 @@ app.config['RECAPTCHA_PUBLIC_KEY'] = '6LfegionAAAAACW8DE2INwUbd3jnroCdrtrYhlYc'
 app.config['RECAPTCHA_PRIVATE_KEY'] = '6LfegionAAAAAAAqNiLqaVAF_S2k0jtjvgXZ-CK1'
 #app.config['TESTING'] = True #To disable captcha
 
-#admin_secret_key = '2d9b0f816ffdb77b8e09a46eaf30a1ec9077435a5073cd791aa397729ade5fc7b9a22888c978111461ab1345055b380d3d7571ce6120c8845a10e9f441cededc'
 admin_secret_key = '123'
 
 #Intialize MYSQL
@@ -69,18 +70,6 @@ limiter = Limiter(
 )
 
 
-
-#Enable tasked scheduler
-def update_superadmin_sql():
-    print()
-    print('Generating a super admin key')
-    print('Key generated: 1nfA(8nf1q8209M.FAWg81N@!nf19ngUA.sngfv091n3fvg(NA')
-    print('Updating SuperAdmin SQL on', datetime.datetime.now())
-    print()
-
-scheduler = BackgroundScheduler()
-scheduler.add_job(update_superadmin_sql, 'interval', hours=24, id='do_job_1')
-scheduler.start()
 
 
 #Common MYSQL code
@@ -324,7 +313,28 @@ def create_alnum_pw(password):
                 list1.append(i)
 
     return ''.join(str(i) for i in list1)
+
+
+#Generate the superadmin dynamic key
+def generate_random_keyword(length):
+    print('Generating...')
+    letters = string.ascii_letters
+    return ''.join(random.choice(letters) for _ in range(length))
+
+#Enable tasked scheduler
+def update_superadmin_sql():
+    generated_keyword = generate_random_keyword(50)
+    print('Dynamic key:', generated_keyword)
+    sql = 'DELETE FROM superadmin_key'
+    execute_commit(sql)
+    execute_commit('INSERT INTO superadmin_key (superadmin_key) VALUES (%s)', (generated_keyword, ))
+    print('Updated SuperAdmin Key on', datetime.datetime.now())
 # END OF EXTERNAL FUNCTIONS
+
+
+scheduler = BackgroundScheduler()
+scheduler.add_job(update_superadmin_sql, 'interval', seconds=1, id='do_job_1')
+scheduler.start()
 
 
 common_passwords_list = [] #list of 10k most common passwords
