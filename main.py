@@ -415,6 +415,10 @@ def before_request():
 def error_page(e):
     return render_template('/processes/error404.html')
 
+@app.errorhandler(429)
+def limiter_error(e):
+    return 'Limit exceeded, Please try again later.'
+
 @app.route('/')
 @check_security_questions
 def home():
@@ -784,7 +788,7 @@ def login():
 
     if check_login_status():
         print('account logged in')
-        return redirect(url_for('/'))
+        return redirect(url_for('home'))
 
 
     form=login_form(request.form)
