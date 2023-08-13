@@ -27,7 +27,6 @@
         <div class="dropdown-menu" aria-labelledby="dropdownMenuLink" style="float:right;">
           {% if is_owner %}
 
-          <a class="dropdown-item" href="/edit_profile">Edit Profile</a>
           <button class="dropdown-item" type='button' data-toggle="modal" data-target=".bd-example-modal-sm1">Reset Password</button>
           <!-- Small modal -->
           <button type="button" class="dropdown-item bg-danger text-white" data-toggle="modal" data-target=".bd-example-modal-sm">Delete Account</button>
@@ -147,6 +146,7 @@
               <p class="card-text">
                 <b>Likes:</b> {{post.like_count}}
               </p>
+            </div>
             </div>
         </a>
         {% endfor %}
