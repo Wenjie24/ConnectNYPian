@@ -419,6 +419,7 @@ def error_page(e):
 def limiter_error(e):
     return render_template('/processes/error429.html')
 
+
 @app.route('/')
 @check_security_questions
 def home():
