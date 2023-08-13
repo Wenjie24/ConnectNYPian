@@ -15,6 +15,8 @@ from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from functools import wraps
 from apscheduler.schedulers.background import BackgroundScheduler
 from flask_talisman import Talisman
+from flask_limiter import Limiter, RateLimitExceeded
+from flask_limiter.util import get_remote_address
 
 import pyotp
 import os
@@ -58,6 +60,13 @@ app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USE_SSL'] = False
 
 mail = Mail(app)
+
+#Default limiter
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["5/second"] # 5 per second request only
+)
 
 
 
@@ -328,6 +337,7 @@ common_passwords_list = mergeSort(common_passwords_list)
 
 # DYNAMIC SESSION LIFE
 @app.before_request
+@limiter.exempt()
 def before_request():
 
     #create_session('login_status',True)
@@ -397,7 +407,9 @@ def before_request():
 
 #END
 
+
 @app.errorhandler(404)
+@limiter.exempt()
 def error_page(e):
     return "Sorry, the page you requested does not exist.", 404
 
@@ -559,6 +571,7 @@ def user(id):
 
 
 @app.route('/confirm_email/<token>')
+@limiter.limit('1/3second')
 def confirm_email(token):
     try:
         #Check for same token
@@ -631,8 +644,6 @@ def signup():
 
 
     if check_login_status():
-
-
         return redirect(url_for('home'))
 
     #Declare username/email error/signup_status for error message
@@ -641,113 +652,121 @@ def signup():
     signup_status = None
     password_error = None
     common_password_error = None
+    rate_limit = False
 
     form = signup_form(request.form)
     # If there's a POST request(Form submitted) enter statement.
     if request.method == 'POST' and form.validate():
-        print("Signing Up")
-        # Try:
-        # Retrieve User Credential in the form
         try:
-            username = request.form['username']
-            password = request.form['password']
-            reenterpassword = request.form['reenterpassword']
-            school = form.school.data
-            hashed_password = bcrypt.generate_password_hash(password)  # Hash the password
-            email = request.form['email']
-            alnum_pw = create_alnum_pw(password)
+            with limiter.limit('1/10minute, 10/day'): # Limiter limit 1/10min, 10/day
 
-            # check for signup errors
-            if password == reenterpassword:
-                password_same = True
-            else:
-                password_same = False
-            username_exist = execute_fetchone('SELECT username FROM accounts WHERE username = %s', (username,))
-            email_exist = execute_fetchone('SELECT school_email FROM accounts WHERE school_email = %s', (email,))
-            if password_same == True:
-                if check_common_password(common_passwords_list, alnum_pw) == True:
-                    common_password = True
-                else: common_password = False
-            else: common_password = False
+                print("Signing Up")
+                # Try:
+                # Retrieve User Credential in the form
+                try:
+                    username = request.form['username']
+                    password = request.form['password']
+                    reenterpassword = request.form['reenterpassword']
+                    school = form.school.data
+                    hashed_password = bcrypt.generate_password_hash(password)  # Hash the password
+                    email = request.form['email']
+                    alnum_pw = create_alnum_pw(password)
 
-
-        except Error as e:
-            print("Error trying to retrieve sign up for credential\n", e)
-        else:
-            if not username_exist and not email_exist and not common_password and password_same: # If username and email is avaliable
-                if hashed_password:# If password is hashed and ready to use
-                    # Try 2FA to confirm email exist
-
-                    #Generate a url serializer
-                    token = serializer.dumps(email, salt='sign_up')
-                    print(f'This is your token:\n{token}')
-
-                    #If there's a token, insert into db with all user value inside (So we can create the account after verifying 2fa in other route)
-                    if token:
+                    # check for signup errors
+                    if password == reenterpassword:
+                        password_same = True
+                    else:
+                        password_same = False
+                    username_exist = execute_fetchone('SELECT username FROM accounts WHERE username = %s', (username,))
+                    email_exist = execute_fetchone('SELECT school_email FROM accounts WHERE school_email = %s', (email,))
+                    if password_same == True:
+                        if check_common_password(common_passwords_list, alnum_pw) == True:
+                            common_password = True
+                        else: common_password = False
+                    else: common_password = False
 
 
-                        execute_commit('INSERT INTO verification_token (token, account_id, username, hashed_pass, school_email, school) VALUES (%s, %s, %s, %s, %s, %s)', (token, -1, username, hashed_password, email, school))
-                        signup_status = f'An verification token has been sent to {email}'
+                except Error as e:
+                    print("Error trying to retrieve sign up for credential\n", e)
+                else:
+                    if not username_exist and not email_exist and not common_password and password_same: # If username and email is avaliable
+                        if hashed_password:# If password is hashed and ready to use
+                            # Try 2FA to confirm email exist
 
-                        message = Message(f'Email verification for {email}', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
-                        verification_link = url_for('confirm_email', token=token, _external=True)
-                        message.body = f'Here is your verification link for Username: {username}\n\n{verification_link}\n\nVerification link will expire in 5 minutes.'
-                        mail.send(message)
+                            #Generate a url serializer
+                            token = serializer.dumps(email, salt='sign_up')
+                            print(f'This is your token:\n{token}')
 
-                    else: # If the token has issue
-                        signup_status = '2FA token generation error has occurred'
+                            #If there's a token, insert into db with all user value inside (So we can create the account after verifying 2fa in other route)
+                            if token:
 
 
-                    #Tell user that email verification has been send
+                                execute_commit('INSERT INTO verification_token (token, account_id, username, hashed_pass, school_email, school) VALUES (%s, %s, %s, %s, %s, %s)', (token, -1, username, hashed_password, email, school))
+                                signup_status = f'An verification token has been sent to {email}, please verify to complete the sign up.'
 
-            else:  #If username and email is not avaliable
-                print("Sign up fail")
-                if username_exist: #If only email exist
-                    print("username exist")
-                    username_error= True
-                    email_error = False
-                    password_error = False
-                if email_exist: #If only email exist
-                    print("Email exist")
-                    email_error=True
-                    username_error = False
-                    password_error = False
+                                message = Message(f'Email verification for {email}', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
+                                verification_link = url_for('confirm_email', token=token, _external=True)
+                                message.body = f'Here is your verification link for Username: {username}\n\n{verification_link}\n\nVerification link will expire in 5 minutes.'
+                                mail.send(message)
 
-                if common_password:
-                    email_error = False
-                    username_error = False
-                    common_password_error = True
+                            else: # If the token has issue
+                                signup_status = '2FA token generation error has occurred'
 
-                if username_exist and email_exist: #If both exist
-                    username_error = True
-                    email_error = True
-                    password_error = False
 
-                if not password_same:
-                    username_error = False
-                    email_error = False
-                    password_error = True
+                            #Tell user that email verification has been send
 
-                if username_exist and not password_same:
-                    username_error = True
-                    email_error = False
-                    password_error = True
+                    else:  #If username and email is not avaliable
+                        print("Sign up fail")
+                        if username_exist: #If only email exist
+                            print("username exist")
+                            username_error= True
+                            email_error = False
+                            password_error = False
+                        if email_exist: #If only email exist
+                            print("Email exist")
+                            email_error=True
+                            username_error = False
+                            password_error = False
 
-                if username_exist and email_error and not password_same:
-                    username_error = True
-                    email_error = True
-                    password_error = True
+                        if common_password:
+                            email_error = False
+                            username_error = False
+                            common_password_error = True
 
-                if email_error and not password_same:
-                    username_error = False
-                    email_error = True
-                    password_error = True
+                        if username_exist and email_exist: #If both exist
+                            username_error = True
+                            email_error = True
+                            password_error = False
 
-        # DML into MySQLdb
+                        if not password_same:
+                            username_error = False
+                            email_error = False
+                            password_error = True
 
-    return render_template('processes/signup.html', form=form, username_error=username_error, email_error=email_error, signup_status=signup_status, password_error=password_error, common_password_error=common_password_error)
+                        if username_exist and not password_same:
+                            username_error = True
+                            email_error = False
+                            password_error = True
 
-@app.route('/login', methods=['GET', 'POST'])
+                        if username_exist and email_error and not password_same:
+                            username_error = True
+                            email_error = True
+                            password_error = True
+
+                        if email_error and not password_same:
+                            username_error = False
+                            email_error = True
+                            password_error = True
+
+                # DML into MySQLdb
+        except RateLimitExceeded:
+            rate_limit = True
+
+    return render_template('processes/signup.html', rate_limit=rate_limit, form=form, username_error=username_error, email_error=email_error, signup_status=signup_status, password_error=password_error, common_password_error=common_password_error)
+
+
+
+@app.route('/login', methods=['GET','POST'])
 def login():
     if 'superadmin_status' in session:
         return redirect(url_for('superadmin'))
@@ -766,147 +785,152 @@ def login():
     account_locked = False
     invalid_pass_or_username = False
     account_id = None
+    rate_limit=False
 
     # If there's a POST request(Form submitted) enter statement.
     if request.method == 'POST' and form.validate(): # If a form is submitted
         try:
-            # Retrieve User Credential in the form
-            username = request.form['username']
-            password = request.form['password']
-            result = execute_fetchone('SELECT * FROM accounts WHERE username = %s AND class != "administrator"', (username,)) # Getting data from database
-        except Error as e:
-            print("Unknown error occurred while retrieving user credential.\n", e)
-        else:
+            with limiter.limit("1/1second, 5/minute, 20/hour, 50/day"):
+                try:
+                    # Retrieve User Credential in the form
+                    username = request.form['username']
+                    password = request.form['password']
+                    result = execute_fetchone('SELECT * FROM accounts WHERE username = %s AND class != "administrator"', (username,)) # Getting data from database
+                except Error as e:
+                    print("Unknown error occurred while retrieving user credential.\n", e)
+                else:
 
-            # If there's result from retrieving
-            if result:
-                print("Retrieving data")
-                # Assigning value from the data retrieved
-                hashed_pass = result['hashed_pass']
-                account_id = result['account_id']
-                username = result['username']
-                #If able to retrieve, continue
-                # Checking if the there's a result from the sql query and checking the value of both hash function
-                if bcrypt.check_password_hash(hashed_pass, password):
-                    if checklockedstatus(account_id) == False:
-                        try:
-                            #If login success, Check if account has enabled 2fa
-                            account_status_tuple = execute_fetchone('SELECT * FROM account_status WHERE account_id = %s', (account_id,))
-                            account_status_2fa = account_status_tuple['enabled_2fa']
-
-
-
-                            if account_status_2fa == 'enabled': #if enabled 2FA
+                    # If there's result from retrieving
+                    if result:
+                        print("Retrieving data")
+                        # Assigning value from the data retrieved
+                        hashed_pass = result['hashed_pass']
+                        account_id = result['account_id']
+                        username = result['username']
+                        #If able to retrieve, continue
+                        # Checking if the there's a result from the sql query and checking the value of both hash function
+                        if bcrypt.check_password_hash(hashed_pass, password):
+                            if checklockedstatus(account_id) == False:
+                                try:
+                                    #If login success, Check if account has enabled 2fa
+                                    account_status_tuple = execute_fetchone('SELECT * FROM account_status WHERE account_id = %s', (account_id,))
+                                    account_status_2fa = account_status_tuple['enabled_2fa']
 
 
 
-                                # Send 2FA token
-                                account_tuple = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s', (account_id,))
-                                account_email = account_tuple['school_email']
-                                account_username = account_tuple['username']
-                                generate_token = serializer.dumps(account_email, salt='2fa')
-                                _2fa_link = url_for('login_2fa', token=generate_token, _external=True)
-
-                                _2fa_message = Message('Sign-in with 2FA Token', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
-
-                                _2fa_message.body = f"Dear {account_username},\n\nTo complete your sign-in, please use the following 2FA link:\n{_2fa_link}\n\nThis message is auto generated. Please do not reply."
-
-                                #Set the token in db first
-                                execute_commit('INSERT INTO verification_token (token, account_id, token_type) VALUES (%s,%s,%s)',(generate_token, account_id,"2fa"))
-
-                                mail.send(_2fa_message)
+                                    if account_status_2fa == 'enabled': #if enabled 2FA
 
 
 
-                                return f'2fa token sent to {account_email}'
+                                        # Send 2FA token
+                                        account_tuple = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s', (account_id,))
+                                        account_email = account_tuple['school_email']
+                                        account_username = account_tuple['username']
+                                        generate_token = serializer.dumps(account_email, salt='2fa')
+                                        _2fa_link = url_for('login_2fa', token=generate_token, _external=True)
 
-                                # Generate message
-                                #CONTINUE WHERE YOU LEFT OFF (ACCOUNT LOGIN, 2FA DETECTED, NOW GENERATE MESSAGE AND CREATE approute for confirming)
+                                        _2fa_message = Message('Sign-in with 2FA Token', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
+
+                                        _2fa_message.body = f"Dear {account_username},\n\nTo complete your sign-in, please use the following 2FA link:\n{_2fa_link}\n\nThis message is auto generated. Please do not reply."
+
+                                        #Set the token in db first
+                                        execute_commit('INSERT INTO verification_token (token, account_id, token_type) VALUES (%s,%s,%s)',(generate_token, account_id,"2fa"))
+
+                                        mail.send(_2fa_message)
 
 
-                            else: #There is no 2FA enabled
-                                #If login success, try to create session for the user
-                                create_session('login_status', True)
-                                create_session('login_id', account_id)
-                                create_session('username', username)
+
+                                        return f'2fa token sent to {account_email}'
+
+                                        # Generate message
+                                        #CONTINUE WHERE YOU LEFT OFF (ACCOUNT LOGIN, 2FA DETECTED, NOW GENERATE MESSAGE AND CREATE approute for confirming)
 
 
-                                #Get the latest reset token if there is any to compare with existing
-                                reset_token_tuple = execute_fetchone(
-                                    'SELECT * FROM verification_token WHERE token_type = "reset" and account_id = %s AND used_boolean = True ORDER BY timecreated DESC LIMIT 1',
-                                    (account_id,))
-                                if reset_token_tuple != None:
-                                    latest_reset_token = reset_token_tuple['TOKEN']
-                                    session['latest_reset_token'] = latest_reset_token
+                                    else: #There is no 2FA enabled
+                                        #If login success, try to create session for the user
+                                        create_session('login_status', True)
+                                        create_session('login_id', account_id)
+                                        create_session('username', username)
 
-                                session.permanent = True
 
-                                #Reset account status
-                                sql = 'UPDATE account_status SET failed_attempts = 0 WHERE account_id = %s AND failed_attempts < 5'
-                                val = session['login_id'],
+                                        #Get the latest reset token if there is any to compare with existing
+                                        reset_token_tuple = execute_fetchone(
+                                            'SELECT * FROM verification_token WHERE token_type = "reset" and account_id = %s AND used_boolean = True ORDER BY timecreated DESC LIMIT 1',
+                                            (account_id,))
+                                        if reset_token_tuple != None:
+                                            latest_reset_token = reset_token_tuple['TOKEN']
+                                            session['latest_reset_token'] = latest_reset_token
+
+                                        session.permanent = True
+
+                                        #Reset account status
+                                        sql = 'UPDATE account_status SET failed_attempts = 0 WHERE account_id = %s AND failed_attempts < 5'
+                                        val = session['login_id'],
+                                        execute_commit(sql, val)
+
+                                        #check if user has done security questions, redirects to page if has not
+                                        security_questions = execute_fetchall('SELECT * FROM security_questions WHERE account_id = %s', (str(session['login_id']), ))
+                                        print(security_questions)
+                                        if security_questions == ():
+                                            return redirect(url_for('create_security_questions'))
+
+                                except Error as e: #If login fail
+                                    print("Login Fail")
+                                    print("Unknown error occurred while trying to create session for user.\n", e)
+                                else:
+                                    print("Login success")
+                                    return redirect(url_for('home'))
+                            else:
+                                #even if correct pass, but locked
+                                account_locked = True
+
+                        elif bcrypt.check_password_hash(hashed_pass, password) == False: # If wrong password
+                            print("Wrong password for:", username)
+                            sql = 'SELECT * FROM account_status WHERE account_id = %s'
+
+                            val = account_id,
+
+                            account_status = execute_fetchone(sql, val)
+                            if account_status:
+                                sql = 'UPDATE account_status SET failed_attempts = failed_attempts + 1 WHERE account_id = %s'
                                 execute_commit(sql, val)
 
-                                #check if user has done security questions, redirects to page if has not
-                                security_questions = execute_fetchall('SELECT * FROM security_questions WHERE account_id = %s', (str(session['login_id']), ))
-                                print(security_questions)
-                                if security_questions == ():
-                                    return redirect(url_for('create_security_questions'))
+                                failed_account = execute_fetchone('SELECT failed_attempts FROM account_status WHERE account_id = %s', (account_id,))
+                                print(failed_account)
+                                if int(failed_account['failed_attempts']) >= 5:
 
-                        except Error as e: #If login fail
-                            print("Login Fail")
-                            print("Unknown error occurred while trying to create session for user.\n", e)
-                        else:
-                            print("Login success")
-                            return redirect(url_for('home'))
-                    else:
-                        #even if correct pass, but locked
-                        account_locked = True
+                                    sql = 'UPDATE account_status SET locked_status = %s WHERE account_id = %s'
+                                    val = ('locked', account_id)
+                                    execute_commit(sql, val) #Lock the user account
 
-                elif bcrypt.check_password_hash(hashed_pass, password) == False: # If wrong password
-                    print("Wrong password for:", username)
-                    sql = 'SELECT * FROM account_status WHERE account_id = %s'
-
-                    val = account_id,
-
-                    account_status = execute_fetchone(sql, val)
-                    if account_status:
-                        sql = 'UPDATE account_status SET failed_attempts = failed_attempts + 1 WHERE account_id = %s'
-                        execute_commit(sql, val)
-
-                        failed_account = execute_fetchone('SELECT failed_attempts FROM account_status WHERE account_id = %s', (account_id,))
-                        print(failed_account)
-                        if int(failed_account['failed_attempts']) >= 5:
-
-                            sql = 'UPDATE account_status SET locked_status = %s WHERE account_id = %s'
-                            val = ('locked', account_id)
-                            execute_commit(sql, val) #Lock the user account
-
-                            #Generate a account locking email
-                            locking_message = Message(f'Account Locked for Security Safety', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
-                            locking_message.body = f'We have notice suspicious multiple failed login attempt from your account.\n\nTo protect your account, we have locked the account. Please contact administrator for support'
-                            mail.send(locking_message)
+                                    #Generate a account locking email
+                                    locking_message = Message(f'Account Locked for Security Safety', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
+                                    locking_message.body = f'We have notice suspicious multiple failed login attempt from your account.\n\nTo protect your account, we have locked the account. Please contact administrator for support'
+                                    mail.send(locking_message)
 
 
-                            print('account with account id of:', account_id, 'has been locked')
-                            # account locked
-                            account_locked = True
-                        elif int(failed_account['failed_attempts']) == 3: # If 3 login failed attempt, generate message to warn user
-                            warning_message = Message(f'Suspicious Login Attempt Reported', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
-                            warning_message.body = f'We have notice multiple failed login attempt from your account.\n\nIf it is not you, Please reset your password IMMEDIATELY'
-                            mail.send(warning_message)
+                                    print('account with account id of:', account_id, 'has been locked')
+                                    # account locked
+                                    account_locked = True
+                                elif int(failed_account['failed_attempts']) == 3: # If 3 login failed attempt, generate message to warn user
+                                    warning_message = Message(f'Suspicious Login Attempt Reported', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
+                                    warning_message.body = f'We have notice multiple failed login attempt from your account.\n\nIf it is not you, Please reset your password IMMEDIATELY'
+                                    mail.send(warning_message)
 
 
-                    else:
-                        sql = 'INSERT INTO account_status (account_id, failed_attempts) VALUES (%s, 1)'
-                        execute_commit(sql, val)
+                            else:
+                                sql = 'INSERT INTO account_status (account_id, failed_attempts) VALUES (%s, 1)'
+                                execute_commit(sql, val)
 
 
-            # if no result
-            invalid_pass_or_username = True
+                    # if no result
+                    invalid_pass_or_username = True
+        except RateLimitExceeded:
+            rate_limit=True
 
 
 
-    return render_template('processes/login.html', form=form, account_locked=account_locked, invalid_pass_or_username=invalid_pass_or_username, account_id=account_id)
+    return render_template('processes/login.html', rate_limit=rate_limit, form=form, account_locked=account_locked, invalid_pass_or_username=invalid_pass_or_username, account_id=account_id)
 
 @app.route('/logout')
 def logout():
@@ -998,6 +1022,7 @@ def logout():
 #             return 'eh stop using the same token again, limpeh tell u this token used already right!'
 
 @app.route('/login_2fa/<token>')
+@limiter.limit('1/3second')
 def login_2fa(token):
     try:
         serialized = serializer.loads(token, salt='2fa', max_age=300)
@@ -1048,106 +1073,125 @@ def login_2fa(token):
 def send_reset_pass():
     #This function i made it so that both logged user dont need to key in any form
     form = send_reset_pass_form(request.form)
+    rate_limit, success = False, None
+
     if (request.method == 'POST' and form.validate()) or check_login_status(): # If reset password form is submitted
         try:
+            with limiter.limit('100/5minute, 3/day'):
+                try:
 
-            if (request.method == 'POST' and form.validate()):
-                email = request.form['email']
-                user_id_tuple = execute_fetchone('SELECT account_id FROM accounts WHERE school_email = %s',(email,))
-            else:
-                user_id_tuple = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s',(session['login_id'],))
-                email = user_id_tuple['school_email']
+                    if (request.method == 'POST' and form.validate()):
+                        email = request.form['email']
+                        user_id_tuple = execute_fetchone('SELECT account_id FROM accounts WHERE school_email = %s',(email,))
+                    else:
+                        user_id_tuple = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s',(session['login_id'],))
+                        email = user_id_tuple['school_email']
 
-        except Error as e:
-            return f'Error: {e}'
-        else:
-
-            if user_id_tuple != None: #If there's a user from the request reset
-
-                #Set the user_id first
-                user_id = user_id_tuple['account_id']
-
-                # Attempt to retrieve all the verification token that user has request today
-                all_token = execute_fetchall(
-                    'SELECT * FROM verification_token WHERE account_id = %s AND token_type = "reset" AND DATE(timecreated) = CURDATE()',
-                    (user_id,))
-
-                # Check if account is locked already
-                account_tuple = execute_fetchone('SELECT * FROM account_status WHERE account_id = %s', (user_id,))
-                if account_tuple != None:
-                    account_locked_status = account_tuple['locked_status'] # 'locked' or 'unlocked'
+                except Error as e:
+                    print("ERROR OCCURED, SUCCESS = FALSE")
+                    success = False
                 else:
-                    #if there's no account_status in the db, make one and assign unlocked
-                    execute_commit('INSERT INTO account_status (account_id,failed_attempts) VALUES (%s,0)', (user_id,))
-                    account_locked_status = 'unlocked'
 
-                if account_locked_status == 'unlocked': #If the account is not locked, allow changing of password
-                    #if user request less than 2 reset token, allow new token to be sent
-                    if len(all_token) < 2:
+                    if user_id_tuple != None: #If there's a user from the request reset
 
-                        #make token
-                        token = serializer.dumps(email, salt='reset')
+                        #Set the user_id first
+                        user_id = user_id_tuple['account_id']
 
-                        #prepare message
-                        message = Message(f'Reset Password', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
-                        verification_link = url_for('reset_pass_confirmed', token=token, _external=True)
-                        message.body = f'Here is your reset Link\n\n{verification_link}\n\nVerification link will expire in 5 minutes.'
-                        #send message
-                        mail.send(message)
+                        # Attempt to retrieve all the verification token that user has request today
+                        all_token = execute_fetchall(
+                            'SELECT * FROM verification_token WHERE account_id = %s AND token_type = "reset" AND DATE(timecreated) = CURDATE()',
+                            (user_id,))
 
-                        # note down that user has created a reset request
-                        execute_commit('INSERT INTO verification_token (TOKEN, account_id, token_type) VALUES (%s, %s, %s)', (token, user_id, 'reset'))
-                        return f'reset link send to {email}'
+                        # Check if account is locked already
+                        account_tuple = execute_fetchone('SELECT * FROM account_status WHERE account_id = %s', (user_id,))
+                        if account_tuple != None:
+                            account_locked_status = account_tuple['locked_status'] # 'locked' or 'unlocked'
+                        else:
+                            #if there's no account_status in the db, make one and assign unlocked
+                            execute_commit('INSERT INTO account_status (account_id,failed_attempts) VALUES (%s,0)', (user_id,))
+                            account_locked_status = 'unlocked'
 
-                    else: #If token exceed 2
+                        if account_locked_status == 'unlocked': #If the account is not locked, allow changing of password
+                            #if user request less than 2 reset token, allow new token to be sent
+                            if len(all_token) < 2:
 
-                        # send last token and label it as sus_reset (suspicious reset)
+                                #make token
+                                token = serializer.dumps(email, salt='reset')
 
-                        #try to see if there's already a suspicious reset
-                        sus_id_tuple = execute_fetchone('SELECT * FROM verification_token WHERE account_id = %s AND token_type = "sus_reset" and date(timecreated) = CURDATE()', (user_id,))
-                        print(sus_id_tuple)
-                        if sus_id_tuple == None: # if no suspicious reset token, send a token
+                                #prepare message
+                                message = Message(f'Reset Password', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
+                                verification_link = url_for('reset_pass_confirmed', token=token, _external=True)
+                                message.body = f'Here is your reset Link\n\n{verification_link}\n\nVerification link will expire in 5 minutes.'
+                                #send message
+                                mail.send(message)
 
-                            #Set up warning token and send
-                            warning_token = serializer.dumps(email, salt='reset')
-                            warning_verification_link = url_for('reset_pass_confirmed', token=warning_token, _external=True)
-                            warning_message = Message(f'Suspicious Password Reset Reported', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
-                            warning_message.body = f'We have notice suspicious password request from your account.\n\n If it is not you, Please reset your password IMMEDIATELY \n{warning_verification_link}\n\n'
-                            mail.send(warning_message)
+                                # note down that user has created a reset request
+                                execute_commit('INSERT INTO verification_token (TOKEN, account_id, token_type) VALUES (%s, %s, %s)', (token, user_id, 'reset'))
 
-                            #note down that sus link is sent
-                            execute_commit('INSERT INTO verification_token (TOKEN, account_id, token_type) VALUES (%s, %s, %s)',
-                                           (warning_token, user_id, 'sus_reset'))
+                                print("Token quota still avaliable, SUCCESS TRUE")
 
-
-                            return 'sus_link send'
-
-                        else: #if there is already a sus token and the user request again, lock the account.
-
-                            locking_message = Message(f'Account Locked for Security Safety', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
-                            locking_message.body = f'We have notice suspicious password request from your account.\n\n To protect your account, we have locked the account. Please contact administrator for support'
-                            mail.send(locking_message)
-
-                            #Lock account
-                            execute_commit('UPDATE account_status SET locked_status = "locked" WHERE account_id = %s',(user_id,))
-
-                            #clear session
+                                success_message = f'An reset token has been sent to {email}.'
+                                success = success_message
 
 
-                            return 'LOCKING UR ACCOUNT AND SEND EMAIL'
-                else:
-                    remove_all_session_user()
-                    return 'account locked please contact admin'
+                            else: #If token exceed 2
+
+                                # send last token and label it as sus_reset (suspicious reset)
+
+                                #try to see if there's already a suspicious reset
+                                sus_id_tuple = execute_fetchone('SELECT * FROM verification_token WHERE account_id = %s AND token_type = "sus_reset" and date(timecreated) = CURDATE()', (user_id,))
+                                print(sus_id_tuple)
+                                if sus_id_tuple == None: # if no suspicious reset token, send a token
+
+                                    #Set up warning token and send
+                                    warning_token = serializer.dumps(email, salt='reset')
+                                    warning_verification_link = url_for('reset_pass_confirmed', token=warning_token, _external=True)
+                                    warning_message = Message(f'Suspicious Password Reset Reported', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
+                                    warning_message.body = f'We have notice suspicious password request from your account.\n\n If it is not you, Please reset your password IMMEDIATELY \n{warning_verification_link}\n\n'
+                                    mail.send(warning_message)
+
+                                    #note down that sus link is sent
+                                    execute_commit('INSERT INTO verification_token (TOKEN, account_id, token_type) VALUES (%s, %s, %s)',
+                                                   (warning_token, user_id, 'sus_reset'))
+
+
+                                else: #if there is already a sus token and the user request again, lock the account.
+
+                                    locking_message = Message(f'Account Locked for Security Safety', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
+                                    locking_message.body = f'We have notice suspicious password request from your account.\n\n To protect your account, we have locked the account. Please contact administrator for support'
+                                    mail.send(locking_message)
+
+                                    #Lock account
+                                    execute_commit('UPDATE account_status SET locked_status = "locked" WHERE account_id = %s',(user_id,))
+
+                                    #clear session
+
+                                print("Token exceed 2, SUCCESS FALSE")
+                                success = False
 
 
 
-            else:
-                #If there's no user, fake send for security reason
-                return f'Reset link sent to {email}'
-    return render_template('/processes/send_reset_pass.html', form=form)
+                        else:
+                            print("ACCOUNT LOCKED, SUCCESS FALSE")
+                            success = False
+                            remove_all_session_user()
+
+
+
+                    else:
+                        print("NO SUCH USER, ERROR STILL FALSE")
+
+                        success = False
+                        #If there's no user, fake send for security reason
+        except RateLimitExceeded:
+            rate_limit = True
+            print("rate limited")
+
+    return render_template('/processes/send_reset_pass.html',success=success, rate_limit=rate_limit, form=form)
 
 
 @app.route('/reset_pass_confirmed/<token>', methods=['GET','POST'])
+@limiter.limit('1/3second')
 def reset_pass_confirmed(token):
     try:
         serialized = serializer.loads(token, salt='reset', max_age=300)
@@ -1217,18 +1261,20 @@ def createpost():
         return redirect(url_for('login'))
 
     form = create_post(request.form)
-    if request.method == 'POST' and form.validate():
-        # assign form data to variables
-        title = form.title.data
-        body = form.body.data
-        category = form.category.data
 
-        # add form data to database
-        sql = "INSERT INTO posts (title, body, category, account_id) VALUES (%s, %s, %s, %s)"
-        val = (title, body, category, session['login_id'])
-        execute_commit(sql, val)
-        print("post added to database, redirecting to homepage")
-        return redirect(url_for('home'))
+    if request.method == 'POST' and form.validate():
+        with limiter.limit("10/minute, 20/hour, 50/day"):
+            # assign form data to variables
+            title = form.title.data
+            body = form.body.data
+            category = form.category.data
+
+            # add form data to database
+            sql = "INSERT INTO posts (title, body, category, account_id) VALUES (%s, %s, %s, %s)"
+            val = (title, body, category, session['login_id'])
+            execute_commit(sql, val)
+            print("post added to database, redirecting to homepage")
+            return redirect(url_for('home'))
 
     return render_template('/processes/createpost.html', form=form)
 
@@ -1293,39 +1339,40 @@ def deletepost(post_id):
         print("Error deleting post: ", e)
 
 @app.route('/comments/<int:post_id>', methods=['GET', 'POST'])
-@check_security_questions
 def comments(post_id):
     try:
         if 'login_id' not in session:
             return redirect(url_for('login'))
 
         if 'login_id' in session:
-            sql = 'SELECT * FROM posts INNER JOIN accounts ON posts.account_id = accounts.account_id WHERE posts.post_id = %s'
-            val = (str(post_id), )
-            post = execute_fetchone(sql, val)
-            form = create_comment(request.form)
-            sql = 'SELECT post_id FROM likes WHERE account_id = %s'
-            val = (str(session['login_id']), )
-            original_list = execute_fetchall(sql, val)
-            liked_posts = [item['post_id'] for item in original_list]
-            sql = 'SELECT * FROM comments INNER JOIN accounts ON comments.account_id = accounts.account_id WHERE comments.post_id = %s ORDER BY comments.comment_timestamp desc'
-            val = (str(post_id), )
-            comments = execute_fetchall(sql, val)
-
-            if request.method == 'POST' and form.validate():
-                body = form.body.data
-                form = create_comment(formdata=None)
-                sql = "INSERT INTO comments (body, account_id, post_id) VALUES (%s, %s, %s)"
-                val = (body, session['login_id'], post_id)
-                execute_commit(sql, val)
-                print("comment added to database")
-                sql = 'UPDATE posts SET comment_count = comment_count + 1 WHERE post_id = %s'
-                val = (post_id, )
-                execute_commit(sql, val)
+            with limiter.limit("10/minute, 20/hour, 50/day"):
+                sql = 'SELECT * FROM posts INNER JOIN accounts ON posts.account_id = accounts.account_id WHERE posts.post_id = %s'
+                val = (str(post_id), )
+                post = execute_fetchone(sql, val)
+                form = create_comment(request.form)
+                sql = 'SELECT post_id FROM likes WHERE account_id = %s'
+                val = (str(session['login_id']), )
+                original_list = execute_fetchall(sql, val)
+                liked_posts = [item['post_id'] for item in original_list]
                 sql = 'SELECT * FROM comments INNER JOIN accounts ON comments.account_id = accounts.account_id WHERE comments.post_id = %s ORDER BY comments.comment_timestamp desc'
                 val = (str(post_id), )
                 comments = execute_fetchall(sql, val)
-                return render_template('/processes/comments.html', post=post, liked_posts=liked_posts, form=form, comments=comments)
+
+                if request.method == 'POST' and form.validate():
+                    body = form.body.data
+                    form = create_comment(formdata=None)
+                    sql = "INSERT INTO comments (body, account_id, post_id) VALUES (%s, %s, %s)"
+                    val = (body, session['login_id'], post_id)
+                    execute_commit(sql, val)
+                    print("comment added to database")
+                    sql = 'UPDATE posts SET comment_count = comment_count + 1 WHERE post_id = %s'
+                    val = (post_id, )
+                    execute_commit(sql, val)
+                    sql = 'SELECT * FROM comments INNER JOIN accounts ON comments.account_id = accounts.account_id WHERE comments.post_id = %s ORDER BY comments.comment_timestamp desc'
+                    val = (str(post_id), )
+                    comments = execute_fetchall(sql, val)
+                    return render_template('/processes/comments.html', post=post, liked_posts=liked_posts, form=form, comments=comments)
+
 
         return render_template('/processes/comments.html', post=post, liked_posts=liked_posts, form=form, comments=comments)
 
@@ -1529,9 +1576,6 @@ def verify_as_educator():
 
 @app.route('/admin-login', methods=['GET', 'POST'])
 def admin_login():
-
-
-
     if 'superadmin_status' in session:
         return redirect(url_for('superadmin'))
     elif 'admin_status' in session:
@@ -1543,82 +1587,88 @@ def admin_login():
     form = login_form(request.form)
     account_locked = False
     invalid_pass_or_username = False
+    rate_limit = False
 
     if request.method == 'POST' and form.validate():
         try:
-            username = request.form['username']
-            password = request.form['password']
-            result = execute_fetchone("SELECT * FROM accounts WHERE username = %s AND class = 'administrator'", (username,)) # Getting data from database
-        except Error as e:
-            print("Unknown error occurred while retrieving user credentials.\n", e)
+            with limiter.limit('1/1second, 5/minute, 20/hr, 50/day'):
+                try:
+                    username = request.form['username']
+                    password = request.form['password']
+                    result = execute_fetchone("SELECT * FROM accounts WHERE username = %s AND class = 'administrator'", (username,)) # Getting data from database
+                except Error as e:
+                    print("Unknown error occurred while retrieving user credentials.\n", e)
 
-        if result:
-            hashed_pass = result['hashed_pass']
-            account_id = result['account_id']
-            username = result['username']
-            #If able to retrieve, continue
-            # Checking if the there's a result from the sql query and checking the value of both hash function
-            if bcrypt.check_password_hash(hashed_pass, password):
-                if checklockedstatus(account_id) == False:
-                    try:
+                if result:
+                    hashed_pass = result['hashed_pass']
+                    account_id = result['account_id']
+                    username = result['username']
+                    #If able to retrieve, continue
+                    # Checking if the there's a result from the sql query and checking the value of both hash function
+                    if bcrypt.check_password_hash(hashed_pass, password):
+                        if checklockedstatus(account_id) == False:
+                            try:
 
-                        # Send 2FA token
-                        account_tuple = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s', (account_id,))
-                        account_email = account_tuple['school_email']
-                        account_username = account_tuple['username']
-                        generate_token = serializer.dumps(account_email, salt='2fa')
-                        _2fa_link = url_for('admin_login_2fa', token=generate_token, _external=True)
+                                # Send 2FA token
+                                account_tuple = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s', (account_id,))
+                                account_email = account_tuple['school_email']
+                                account_username = account_tuple['username']
+                                generate_token = serializer.dumps(account_email, salt='2fa')
+                                _2fa_link = url_for('admin_login_2fa', token=generate_token, _external=True)
 
-                        _2fa_message = Message(f'Admin: {account_username} | Sign-in with 2FA Token', sender='ConnectNYPian@gmail.com',
-                                               recipients=['connectnypian.test.receive@gmail.com'])
+                                _2fa_message = Message(f'Admin: {account_username} | Sign-in with 2FA Token', sender='ConnectNYPian@gmail.com',
+                                                       recipients=['connectnypian.test.receive@gmail.com'])
 
-                        _2fa_message.body = f"Dear {account_username},\n\nTo complete your sign-in as Administrator, please use the following 2FA link:\n{_2fa_link}\n\nThis message is auto generated. Please do not reply."
+                                _2fa_message.body = f"Dear {account_username},\n\nTo complete your sign-in as Administrator, please use the following 2FA link:\n{_2fa_link}\n\nThis message is auto generated. Please do not reply."
 
-                        # Set the token in db first
-                        execute_commit('INSERT INTO verification_token (token, account_id, token_type) VALUES (%s,%s,"2fa")',
-                                       (generate_token, account_id))
+                                # Set the token in db first
+                                execute_commit('INSERT INTO verification_token (token, account_id, token_type) VALUES (%s,%s,"2fa")',
+                                               (generate_token, account_id))
 
-                        mail.send(_2fa_message)
+                                mail.send(_2fa_message)
 
-                        return f'2fa token sent to {account_email}'
+                                return f'2fa token sent to {account_email}'
 
 
 
-                    except Error as e:
-                        print('Admin Login Failed')
-                    else:
-                        print('Admin Login Success')
-                        return redirect(url_for('admin'))
-                else:
-                    account_locked = True
-
-            elif bcrypt.check_password_hash(hashed_pass, password) == False:
-                    sql = 'SELECT * FROM account_status WHERE account_id = %s'
-                    val = account_id,
-
-                    account_status = execute_fetchone(sql, val)
-                    if account_status:
-                        sql = 'UPDATE account_status SET failed_attempts = failed_attempts + 1 WHERE account_id = %s'
-                        execute_commit(sql, val)
-
-                        failed_account = execute_fetchone('SELECT failed_attempts FROM account_status WHERE account_id = %s', (account_id,))
-                        print(failed_account)
-                        if int(failed_account['failed_attempts']) >= 5:
-                            sql = 'UPDATE account_status SET locked_status = %s WHERE account_id = %s'
-                            val = ('locked', account_id)
-                            execute_commit(sql, val)
-                            print('account with account id of:', account_id, 'has been locked')
-                            # account locked
+                            except Error as e:
+                                print('Admin Login Failed')
+                            else:
+                                print('Admin Login Success')
+                                return redirect(url_for('admin'))
+                        else:
                             account_locked = True
-                    else:
-                        sql = 'INSERT INTO account_status (account_id, failed_attempts) VALUES (%s, 1)'
-                        execute_commit(sql, val)
 
-            invalid_pass_or_username = True
+                    elif bcrypt.check_password_hash(hashed_pass, password) == False:
+                            sql = 'SELECT * FROM account_status WHERE account_id = %s'
+                            val = account_id,
 
-    return render_template('/processes/admin_login.html', form=form, account_locked=account_locked, invalid_pass_or_username=invalid_pass_or_username)
+                            account_status = execute_fetchone(sql, val)
+                            if account_status:
+                                sql = 'UPDATE account_status SET failed_attempts = failed_attempts + 1 WHERE account_id = %s'
+                                execute_commit(sql, val)
+
+                                failed_account = execute_fetchone('SELECT failed_attempts FROM account_status WHERE account_id = %s', (account_id,))
+                                print(failed_account)
+                                if int(failed_account['failed_attempts']) >= 5:
+                                    sql = 'UPDATE account_status SET locked_status = %s WHERE account_id = %s'
+                                    val = ('locked', account_id)
+                                    execute_commit(sql, val)
+                                    print('account with account id of:', account_id, 'has been locked')
+                                    # account locked
+                                    account_locked = True
+                            else:
+                                sql = 'INSERT INTO account_status (account_id, failed_attempts) VALUES (%s, 1)'
+                                execute_commit(sql, val)
+
+                    invalid_pass_or_username = True
+        except RateLimitExceeded:
+            rate_limit = True
+
+    return render_template('/processes/admin_login.html', rate_limit=rate_limit, form=form, account_locked=account_locked, invalid_pass_or_username=invalid_pass_or_username)
 
 @app.route('/admin_login_2fa/<token>')
+@limiter.limit('1/3second')
 def admin_login_2fa(token):
     try:
         serialized = serializer.loads(token, salt='2fa', max_age=300)
@@ -1682,30 +1732,35 @@ def superadmin_login():
 
     invalid_pass_or_username = False
     form = login_form(request.form)
+    rate_limit=None
     if request.method == 'POST' and form.validate():
-        username = form.username.data
-        secret_key = form.password.data
-        if username == 'superadmin' and secret_key == admin_secret_key:
+        try:
+            with limiter.limit('1/minute, 5/hour, 10/day'):
+                username = form.username.data
+                secret_key = form.password.data
+                if username == 'superadmin' and secret_key == admin_secret_key:
 
-            # Remove all normal user session
-            remove_all_session_user()
+                    # Remove all normal user session
+                    remove_all_session_user()
 
-            create_session('login_status', True)
-            create_session('login_id', -1)
-            #create_session('username', username) No need for username
-            create_session('admin_status', True)
-            create_session('superadmin_status', True)
+                    create_session('login_status', True)
+                    create_session('login_id', -1)
+                    #create_session('username', username) No need for username
+                    create_session('admin_status', True)
+                    create_session('superadmin_status', True)
 
-            print("IM ON SIGNIN SUPPERADMIN- ", session['admin_status'])
+                    print("IM ON SIGNIN SUPPERADMIN- ", session['admin_status'])
 
-            print("Everything created")
+                    print("Everything created")
 
-            return redirect(url_for('superadmin'))
+                    return redirect(url_for('superadmin'))
 
-        else:
-            invalid_pass_or_username = True
+                else:
+                    invalid_pass_or_username = True
+        except RateLimitExceeded:
+            rate_limit=True
 
-    return render_template('/processes/superadmin_login.html', form=form, invalid_pass_or_username=invalid_pass_or_username)
+    return render_template('/processes/superadmin_login.html', rate_limit=rate_limit, form=form, invalid_pass_or_username=invalid_pass_or_username)
 
 @app.route('/admin')
 @admin_login_required
@@ -1793,7 +1848,7 @@ def grant_educator_verification(account_id):
 Talisman(app, content_security_policy=None)
 
 if __name__ == '__main__':
-    app.run(debug=False, port=443, ssl_context=('cert.pem', 'key.pem'))
+    app.run(debug=True, port=443, ssl_context=('cert.pem', 'key.pem'))
 
 
 #Security Issue
