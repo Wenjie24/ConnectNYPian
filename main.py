@@ -604,7 +604,7 @@ def confirm_email(token):
                     print(email)
 
                 except Exception as e:
-                    return f'Unknown Error Has Occurred\n {e}'
+                    pass
                 else:
 
                     try:
@@ -616,6 +616,8 @@ def confirm_email(token):
                         execute_commit('INSERT INTO students (account_id, school) VALUES (%s, %s)', (str(account_id), school))
 
                     except IntegrityError:
+
+                        #Error in creating account
                         return 'Cant create account. account already exist.'
                     else:
                         # Inserting school into sub table
@@ -637,10 +639,14 @@ def confirm_email(token):
                             (account_id, token))
 
                         print("Account created")
-                        return "Token Valid, Account created, Please log in to continue."
+                        session_message = f'{username} created successfully. Please login to continue.'
+                        create_session('account_creation', session_message)
+                        return redirect(url_for('login'))
 
-            else:
-                return 'Token not exist or smth la'
+
+    error_message = 'Invalid Sign up Token. Please try again.'
+    create_session('invalid_token', error_message)
+    return redirect(url_for('login'))
 
 
 
@@ -778,14 +784,15 @@ def signup():
 
 @app.route('/login', methods=['GET','POST'])
 def login():
+    print('login route')
     if 'superadmin_status' in session:
         return redirect(url_for('superadmin'))
     elif 'admin_status' in session:
         return redirect(url_for('admin'))
 
     if check_login_status():
-
-        return redirect(url_for('home'))
+        print('account logged in')
+        return redirect(url_for('/'))
 
 
     form=login_form(request.form)
@@ -796,12 +803,25 @@ def login():
     invalid_pass_or_username = False
     account_id = None
     rate_limit=False
+    _login_token_ = None
+
+    creation_message = None
+    if 'account_creation' in session:
+        creation_message = session['account_creation']
+        remove_session('account_creation')
+
+    invalid_token = None
+    if 'invalid_token' in session:
+        invalid_token = session['invalid_token']
+        remove_session('invalid_token')
 
     # If there's a POST request(Form submitted) enter statement.
     if request.method == 'POST' and form.validate(): # If a form is submitted
         try:
+            print("POSTPOSTPOSTPOST")
             with limiter.limit("1/1second, 5/minute, 20/hour, 50/day"):
                 try:
+                    print("Retrieving data for login")
                     # Retrieve User Credential in the form
                     username = request.form['username']
                     password = request.form['password']
@@ -820,6 +840,7 @@ def login():
                         #If able to retrieve, continue
                         # Checking if the there's a result from the sql query and checking the value of both hash function
                         if bcrypt.check_password_hash(hashed_pass, password):
+                            print('PASSWORD IS SAME! AS HASH')
                             if checklockedstatus(account_id) == False:
                                 try:
                                     #If login success, Check if account has enabled 2fa
@@ -850,7 +871,7 @@ def login():
 
 
 
-                                        return f'2fa token sent to {account_email}'
+                                        _login_token_ = f'An login token has been sent to {account_email}, please login through the token.'
 
                                         # Generate message
                                         #CONTINUE WHERE YOU LEFT OFF (ACCOUNT LOGIN, 2FA DETECTED, NOW GENERATE MESSAGE AND CREATE approute for confirming)
@@ -884,12 +905,14 @@ def login():
                                         if security_questions == ():
                                             return redirect(url_for('create_security_questions'))
 
+                                        print("Login success")
+                                        return redirect(url_for('home'))
+
                                 except Error as e: #If login fail
                                     print("Login Fail")
                                     print("Unknown error occurred while trying to create session for user.\n", e)
                                 else:
-                                    print("Login success")
-                                    return redirect(url_for('home'))
+                                    pass
                             else:
                                 #even if correct pass, but locked
                                 account_locked = True
@@ -932,15 +955,15 @@ def login():
                                 sql = 'INSERT INTO account_status (account_id, failed_attempts) VALUES (%s, 1)'
                                 execute_commit(sql, val)
 
-
+                    else:
                     # if no result
-                    invalid_pass_or_username = True
+                        invalid_pass_or_username = True
         except RateLimitExceeded:
             rate_limit=True
 
 
 
-    return render_template('processes/login.html', rate_limit=rate_limit, form=form, account_locked=account_locked, invalid_pass_or_username=invalid_pass_or_username, account_id=account_id)
+    return render_template('processes/login.html', _login_token_=_login_token_, invalid_token=invalid_token, creation_message=creation_message, rate_limit=rate_limit, form=form, account_locked=account_locked, invalid_pass_or_username=invalid_pass_or_username, account_id=account_id)
 
 @app.route('/logout')
 def logout():
@@ -1582,6 +1605,64 @@ def verify_as_educator():
         execute_commit(sql, val)
         request_success = True
     return render_template('/processes/verify_as_educator.html', form=form, request_success=request_success, duplicate_employee_id=duplicate_employee_id)
+
+@app.route('/delete_account')
+def delete_account():
+    #Only for normal account, admin can't delete account
+    if 'login_status' in session:
+        #check if it's a admin account
+        if not check_session('superadmin_status') and not check_session('admin_status'):
+            #if not admin, delete account using session id
+            try:
+                id_to_delete = session['login_id']
+
+                #Try to get the class of the account
+                account_tuple = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s',(id_to_delete,))
+                account_class = account_tuple['class']
+
+            except Exception:
+                return 'Error in deleting account'
+            else:
+                #Delete from security question
+                execute_commit('DELETE FROM security_questions WHERE account_id = %s', (id_to_delete,))
+
+                #Delete comment made by user
+                execute_commit('DELETE FROM comments WHERE account_id = %s', (id_to_delete,))
+
+                #Delete post made by user
+                execute_commit('DELETE FROM posts WHERE account_id = %s', (id_to_delete,))
+
+                #Delete follow list
+                execute_commit('DELETE FROM follow_account WHERE follower_id = %s or followee_id = %s', (id_to_delete,id_to_delete,))
+
+                #Delete verification token made by that user
+                execute_commit('DELETE FROM verification_token WHERE account_id = %s', (id_to_delete,))
+
+                #Delete From account_status
+                execute_commit('DELETE FROM account_status WHERE account_id = %s',(id_to_delete,))
+
+                #Delete from accounts
+                execute_commit('DELETE FROM accounts WHERE account_id = %s', (id_to_delete,))
+
+                #Try to delete from educator/student
+                if account_class == 'student':
+                    execute_commit('DELETE FROM students WHERE account_id = %s', (id_to_delete,))
+                else:
+                    execute_commit('DELETE FROM educators WHERE account_id = %s', (id_to_delete,))
+
+                #Remove all session
+                remove_all_session_user()
+
+                return redirect('signup')
+
+        else:
+            if check_session('superadmin_staus'):
+                return redirect('superadmin')
+            else:
+                return redirect('admin')
+    else:
+        return redirect('signup')
+
 
 
 @app.route('/admin-login', methods=['GET', 'POST'])
