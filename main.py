@@ -417,7 +417,7 @@ def error_page(e):
 
 @app.errorhandler(429)
 def limiter_error(e):
-    return 'Limit exceeded, Please try again later.'
+    return render_template('/processes/error429.html')
 
 @app.route('/')
 @check_security_questions
