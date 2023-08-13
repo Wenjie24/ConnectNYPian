@@ -417,7 +417,7 @@ def error_page(e):
 
 @app.errorhandler(429)
 def limiter_error(e):
-    return render_template('/processes/error429.html')
+    return 'Too much request, please try again later.'
 
 
 @app.route('/')
