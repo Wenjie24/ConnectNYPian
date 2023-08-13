@@ -1584,12 +1584,26 @@ def delete_account():
                 id_to_delete = session['login_id']
 
                 #Try to get the class of the account
-                account_tuple = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s',(id_to_delete))
+                account_tuple = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s',(id_to_delete,))
                 account_class = account_tuple['class']
 
             except Exception:
                 return 'Error in deleting account'
             else:
+                #Delete from security question
+                execute_commit('DELETE FROM security_questions WHERE account_id = %s', (id_to_delete,))
+
+                #Delete comment made by user
+                execute_commit('DELETE FROM comments WHERE account_id = %s', (id_to_delete,))
+
+                #Delete post made by user
+                execute_commit('DELETE FROM posts WHERE account_id = %s', (id_to_delete,))
+
+                #Delete follow list
+                execute_commit('DELETE FROM follow_account WHERE follower_id = %s or followee_id = %s', (id_to_delete,id_to_delete,))
+
+                #Delete verification token made by that user
+                execute_commit('DELETE FROM verification_token WHERE account_id = %s', (id_to_delete,))
 
                 #Delete From account_status
                 execute_commit('DELETE FROM account_status WHERE account_id = %s',(id_to_delete,))
@@ -1602,6 +1616,11 @@ def delete_account():
                     execute_commit('DELETE FROM students WHERE account_id = %s', (id_to_delete,))
                 else:
                     execute_commit('DELETE FROM educators WHERE account_id = %s', (id_to_delete,))
+
+                #Remove all session
+                remove_all_session_user()
+
+                return redirect('signup')
 
         else:
             if check_session('superadmin_staus'):
