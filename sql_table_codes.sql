@@ -167,5 +167,25 @@ CREATE TABLE IF NOT EXISTS report_post (
 	);
 
 CREATE TABLE IF NOT EXISTS superadmin_key (
-	superadmin_key VARCHAR(50) NOT NULL
+	superadmin_key VARCHAR(512) NOT NULL
     );
+
+-- Initial key
+INSERT INTO SUPERADMIN_KEY VALUES ('dadd3f38a9d82de911cbf246ba6e7f3d6af4cbc724a6008e1128b3bd89e5265bcb0d5a4fb434468f2c7b386f6864f74d85ecbee7329dfd6071d3209143bbcfd8');
+
+DROP EVENT IF EXISTS generate_superadmin_key_event;
+
+-- Create the event
+DELIMITER //
+CREATE EVENT generate_superadmin_key_event
+ON SCHEDULE EVERY 24 HOUR -- Adjust the schedule as needed
+DO
+BEGIN
+    UPDATE superadmin_key
+    SET superadmin_key = SHA2(UUID(), 512);
+END;
+//
+DELIMITER ;
+SET GLOBAL event_scheduler = ON;
+
+GRANT EVENT ON *.* TO 'root'@'localhost';

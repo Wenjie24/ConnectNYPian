@@ -95,6 +95,7 @@ def execute_commit(query, parameterized_query_data=None): #Get cursor, execute a
         cursor.execute(query, parameterized_query_data)
         connection_commit()
         cursor_close(cursor)
+        print("Execute commit finish")
     except Error as e:
         print("Error Executing query:", e)
         return None
@@ -107,6 +108,7 @@ def execute_fetchone(query, parameterized_query_data=None): #Get cursor, execute
         cursor.execute(query, parameterized_query_data)
         result = cursor.fetchone()
         cursor_close(cursor)
+        print("Execute fetchone finish")
         return result
     except Error as e:
         print("Error Executing query:", e)
@@ -321,20 +323,10 @@ def generate_random_keyword(length):
     letters = string.ascii_letters
     return ''.join(random.choice(letters) for _ in range(length))
 
-#Enable tasked scheduler
-def update_superadmin_sql():
-    generated_keyword = generate_random_keyword(50)
-    print('Dynamic key:', generated_keyword)
-    sql = 'DELETE FROM superadmin_key'
-    execute_commit(sql)
-    execute_commit('INSERT INTO superadmin_key (superadmin_key) VALUES (%s)', (generated_keyword, ))
-    print('Updated SuperAdmin Key on', datetime.datetime.now())
-# END OF EXTERNAL FUNCTIONS
 
 
-scheduler = BackgroundScheduler()
-scheduler.add_job(update_superadmin_sql, 'interval', seconds=1, id='do_job_1')
-scheduler.start()
+
+
 
 
 common_passwords_list = [] #list of 10k most common passwords
@@ -1938,8 +1930,33 @@ def grant_educator_verification(account_id):
 #Ensure all connection are https
 Talisman(app, content_security_policy=None)
 
+
+#Enable tasked scheduler
+def update_superadmin_sql():
+    # try:
+    #     print("Entered function")
+    #     print(execute_fetchone('SELECT * FROM accounts WHERE account_id = "1"'))
+    #     print("ExecutedFetchone")
+    #     generated_keyword = generate_random_keyword(50)
+    #     print('Dynamic key:', generated_keyword)
+    #     sql = 'DELETE FROM superadmin_key'
+    #     execute_commit(sql,(None,))
+    #     execute_commit('INSERT INTO superadmin_key (superadmin_key) VALUES (%s)', (generated_keyword, ))
+    #     print('Updated SuperAdmin Key on', datetime.datetime.now())
+    # except Exception as e:
+    #     print(e)
+    pass
+
+# END OF EXTERNAL FUNCTIONS
+
+
+# scheduler = BackgroundScheduler()
+# scheduler.add_job(update_superadmin_sql, 'interval', seconds=2, id='do_job_1')
+# scheduler.start()
+
+
 if __name__ == '__main__':
-    app.run(debug=True, port=443, ssl_context=('cert.pem', 'key.pem'))
+    app.run(debug=False, port=443, ssl_context=('cert.pem', 'key.pem'))
 
 
 #Security Issue
