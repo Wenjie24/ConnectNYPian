@@ -1573,6 +1573,45 @@ def verify_as_educator():
         request_success = True
     return render_template('/processes/verify_as_educator.html', form=form, request_success=request_success, duplicate_employee_id=duplicate_employee_id)
 
+@app.route('/delete_account')
+def delete_account():
+    #Only for normal account, admin can't delete account
+    if 'login_status' in session:
+        #check if it's a admin account
+        if not check_session('superadmin_status') and not check_session('admin_status'):
+            #if not admin, delete account using session id
+            try:
+                id_to_delete = session['login_id']
+
+                #Try to get the class of the account
+                account_tuple = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s',(id_to_delete))
+                account_class = account_tuple['class']
+
+            except Exception:
+                return 'Error in deleting account'
+            else:
+
+                #Delete From account_status
+                execute_commit('DELETE FROM account_status WHERE account_id = %s',(id_to_delete,))
+
+                #Delete from accounts
+                execute_commit('DELETE FROM accounts WHERE account_id = %s', (id_to_delete,))
+
+                #Try to delete from educator/student
+                if account_class == 'student':
+                    execute_commit('DELETE FROM students WHERE account_id = %s', (id_to_delete,))
+                else:
+                    execute_commit('DELETE FROM educators WHERE account_id = %s', (id_to_delete,))
+
+        else:
+            if check_session('superadmin_staus'):
+                return redirect('superadmin')
+            else:
+                return redirect('admin')
+    else:
+        return redirect('signup')
+
+
 
 @app.route('/admin-login', methods=['GET', 'POST'])
 def admin_login():
