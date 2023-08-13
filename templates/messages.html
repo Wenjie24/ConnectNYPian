@@ -1,0 +1,244 @@
+{% extends 'base.html' %}
+
+{% block title %}Messaging Environment{% endblock %}
+{% from "includes/formHelper.html" import render_field %}
+{% block content %}
+<style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .container {
+            width: 80%;
+            margin: auto;
+            margin-top: 2rem;
+            letter-spacing: 0.5px;
+            height: 80%;
+        }
+
+        img {
+            width: 50px;
+            vertical-align: middle;
+            border-style: none;
+            border-radius: 100%;
+        }
+
+        /* msg header */
+        .msg-header {
+            border: 1px solid #ccc;
+            width: 100%;
+            height: 10%;
+            border-bottom: none;
+            display: inline-block;
+            background-color: #efefef;
+            margin: 0;
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+        }
+
+        /* pfp */
+        .msgimg {
+            margin-left: 2%;
+            float: left;
+        }
+
+        .container1 {
+            width: 270px;
+            height: auto;
+            float: left;
+            margin: 0;
+        }
+
+        /* username */
+        .active {
+            width: 150px;
+            float: left;
+            color: black;
+            font-weight: bold;
+            margin: 0 0 0 5px;
+            height: 10%;
+        }
+
+        /* inbox */
+        .chat-page {
+            padding: 0 0 55px 0;
+        }
+
+        .msg-page {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .msg-inbox {
+            border: 1px solid #ccc;
+            overflow: hidden;
+            border-bottom-left-radius: 20px;
+            border-bottom-right-radius: 20px;
+        }
+
+        .chats {
+            padding: 30px 15px 0 25px;
+        }
+
+        /* message sending thing */
+        .msg-bottom {
+            border-top: 1px solid #ccc;
+            position: relative;
+            height: 11%;
+            background-color: white
+        }
+
+        /* input area */
+        .input-group {
+            float: right;
+            margin-top: 13px;
+            margin-right: 20px;
+            outline: none !important;
+            border-radius: 20px;
+            width: 60% !important;
+            background-color: #fff;
+            position: relative;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: stretch;
+        }
+
+        .form-control1 {
+            border: none !important;
+            border-radius: 20px !important;
+            display: block;
+            height: calc(2.25rem + 2px);
+            padding: 0.375rem 0.75rem;
+            font-size: 1rem;
+            line-height: 1.5;
+            color: #495057;
+            background-color: #fff;
+            background-clip: padding-box;
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        }
+
+        .input-group-text {
+            background: transparent !important;
+            border: none !important;
+            display: flex;
+            align-items: center;
+            padding: 0.375rem 0.75rem;
+            margin-bottom: 0;
+            font-size: 1.5rem;
+            font-weight: bold;
+            line-height: 1.5;
+            color: #495057;
+            text-align: center;
+            white-space: nowrap;
+            background-color: #e9ecef;
+            border: 1px solid #ced4da;
+            border-radius: 0.25rem;
+            cursor: pointer;
+        }
+
+        input:focus {
+            outline: none;
+            border: none !important;
+            box-shadow: none !important;
+        }
+
+        .input-group>.form-control {
+            position: relative;
+            flex: 1 1 auto;
+            width: 1%;
+            margin-bottom: 0;
+        }
+
+
+        .received-chats-img,
+        .outgoing-chats-img {
+            display: inline-block;
+            width: 50px;
+            float: left;
+            margin-right: 1rem;
+        }
+
+        .received-msg,
+        .outgoing-msg {
+            display: inline-block;
+            padding: 0 0 0 10px;
+            vertical-align: top;
+            width: 92%;
+        }
+
+        .received-msg-inbox,
+        .outgoing-chats-msg {
+            width: 100%;
+        }
+
+        .received-msg-inbox p,
+        .outgoing-chats-msg p {
+            background: #efefef none repeat scroll 0 0;
+            border-radius: 10px;
+            color: #646464;
+            font-size: 14px;
+            margin-left: 1rem;
+            padding: 1rem;
+            width: 100%;
+            box-shadow: rgba(0, 0, 0, 0.25) 0px 5px 5px 2px;
+        }
+
+        .time {
+            color: #777;
+            display: block;
+            font-size: 12px;
+            margin: 8px 0 0;
+        }
+
+        .outgoing-chats-msg {
+            float: right;
+            width: 46%;
+        }
+    </style>
+  <div class="container">
+    <!-- msg header -->
+    <div class="msg-header">
+      <div class="container1">
+        <img src="/static/images/person-circle.svg" alt="avatar" class="rounded-circle img-fluid" style="width: 30px; float: left; margin-right: 10px"/>
+        <div class="active">
+          {% for user in followed_users %}
+            <p>{{ user.username }}</p>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- chat inbxo  -->
+    <div class="chat-page">
+      <div class="msg-inbox">
+        <div class="chats">
+          <div class="msg-page">
+            {% for message in messages %}
+              <div class="{% if message.account_id == current_user.id %}outgoing{% else %}incoming{% endif %}">
+                <p>{{ message.body }}</p>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- msg send part -->
+        <div class="msg-bottom">
+          <form method="POST" action="{{ messages.chat_id }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+              <div class="form-control1">
+                <div class="form-control input-group">
+                  {{ render_field(form.message, class="form-control")}}
+
+
+                <div class="form-group" style="float: right; margin-bottom:10px; margin-right:15px">
+                  <button type="submit" class="btn btn-primary" id="submitbutton" onclick="clear()" style="border-radius:20px; padding-left:17px; padding-right:17px; font-weight:bold">
+                    Send
+                  </button>
+                </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
