@@ -165,3 +165,7 @@ CREATE TABLE IF NOT EXISTS report_post (
     FOREIGN KEY (reporter_id) REFERENCES accounts(account_id),
     FOREIGN KEY (post_id) REFERENCES posts(post_id)
 	);
+
+CREATE TABLE IF NOT EXISTS superadmin_key (
+	superadmin_key VARCHAR(50) NOT NULL
+    );

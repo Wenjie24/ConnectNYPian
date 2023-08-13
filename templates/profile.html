@@ -26,7 +26,6 @@
         <a href="#" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" style="width:30px; margin-left:17px; margin-top:10px"><img src="/static/images/more.png" style="width: 22px"></a>
         <div class="dropdown-menu" aria-labelledby="dropdownMenuLink" style="float:right;">
           {% if is_owner %}
-          <a class="dropdown-item" href="/edit_profile">Edit Profile</a>
           <a class="dropdown-item" href="/send_reset_pass" data-toggle="modal" data-target=".bd-example-modal-sm">Reset Password</a>
           {% if account_class == 'student' %}
           <a class="dropdown-item" href="/verify-as-educator">Verify as Educator</a>
