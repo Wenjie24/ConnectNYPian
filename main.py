@@ -1118,7 +1118,7 @@ def send_reset_pass():
             with limiter.limit('100/5minute, 3/day'):
                 try:
 
-                    if (request.method == 'POST' and form.validate()):
+                    if not check_login_status():
                         email = request.form['email']
                         user_id_tuple = execute_fetchone('SELECT account_id FROM accounts WHERE school_email = %s',(email,))
                     else:
