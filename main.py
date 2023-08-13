@@ -19,6 +19,7 @@ import string
 import random
 from flask_limiter import Limiter, RateLimitExceeded
 from flask_limiter.util import get_remote_address
+import secrets
 
 import pyotp
 import os
@@ -40,7 +41,7 @@ app.config['RECAPTCHA_PUBLIC_KEY'] = '6LfegionAAAAACW8DE2INwUbd3jnroCdrtrYhlYc'
 app.config['RECAPTCHA_PRIVATE_KEY'] = '6LfegionAAAAAAAqNiLqaVAF_S2k0jtjvgXZ-CK1'
 #app.config['TESTING'] = True #To disable captcha
 
-admin_secret_key = '123'
+
 
 #Intialize MYSQL
 mysql = MySQL(app)
@@ -327,8 +328,6 @@ def generate_random_keyword(length):
 
 
 
-
-
 common_passwords_list = [] #list of 10k most common passwords
 common_passwords = open('10k-most-common.txt', 'r')
 for line in common_passwords:
@@ -598,6 +597,7 @@ def confirm_email(token):
                     email = token_detail['school_email']
                     username = token_detail['username']
                     school = token_detail['school']
+                    pwsalt = token_detail['salt']
 
                     print(email)
 
@@ -607,7 +607,7 @@ def confirm_email(token):
 
                     try:
                          # Inserting data into account: account_id, email, username, date_created
-                        execute_commit('INSERT INTO accounts (hashed_pass, school_email, username, class) VALUES (%s, %s, %s, %s)',(hashed_password, email, username, 'student'))
+                        execute_commit('INSERT INTO accounts (salt, hashed_pass, school_email, username, class) VALUES (%s, %s, %s, %s, %s)',(pwsalt, hashed_password, email, username, 'student'))
                         # Inserting school into sub table
                         account_id_tuple = execute_fetchone('SELECT account_id FROM accounts WHERE username = %s', (username, ))
                         account_id = account_id_tuple['account_id']
@@ -682,8 +682,14 @@ def signup():
                     password = request.form['password']
                     reenterpassword = request.form['reenterpassword']
                     school = form.school.data
-                    hashed_password = bcrypt.generate_password_hash(password)  # Hash the password
-                    hashed_and_salted = bcrypt.hashpw()
+
+
+                    pwsalt = secrets.token_hex(16)
+                    salted_password = password+pwsalt
+
+
+                    hashed_password = bcrypt.generate_password_hash(salted_password)  # Hash the password
+
 
 
 
@@ -719,7 +725,7 @@ def signup():
                             if token:
 
 
-                                execute_commit('INSERT INTO verification_token (token, account_id, username, hashed_pass, school_email, school) VALUES (%s, %s, %s, %s, %s, %s)', (token, -1, username, hashed_password, email, school))
+                                execute_commit('INSERT INTO verification_token (salt, token, account_id, username, hashed_pass, school_email, school) VALUES (%s, %s, %s, %s, %s, %s, %s)', (pwsalt,token, -1, username, hashed_password, email, school))
                                 signup_status = f'An verification token has been sent to {email}, please verify to complete the sign up.'
 
                                 message = Message(f'{email}| Email verification Token', sender='ConnectNYPian@gmail.com', recipients=['connectnypian.test.receive@gmail.com'])
@@ -829,7 +835,9 @@ def login():
                     password = request.form['password']
                     result = execute_fetchone('SELECT * FROM accounts WHERE username = %s AND class != "administrator"', (username,)) # Getting data from database
                 except Error as e:
+
                     print("Unknown error occurred while retrieving user credential.\n", e)
+                    return 'error'
                 else:
 
                     # If there's result from retrieving
@@ -837,11 +845,15 @@ def login():
                         print("Retrieving data")
                         # Assigning value from the data retrieved
                         hashed_pass = result['hashed_pass']
+                        salt = result['salt']
                         account_id = result['account_id']
                         username = result['username']
+
+                        password_to_check = password+salt
+
                         #If able to retrieve, continue
                         # Checking if the there's a result from the sql query and checking the value of both hash function
-                        if bcrypt.check_password_hash(hashed_pass, password):
+                        if bcrypt.check_password_hash(hashed_pass, password_to_check):
                             print('PASSWORD IS SAME! AS HASH')
                             if checklockedstatus(account_id) == False:
                                 try:
@@ -911,6 +923,7 @@ def login():
                                         return redirect(url_for('home'))
 
                                 except Error as e: #If login fail
+                                    return 'login failed'
                                     print("Login Fail")
                                     print("Unknown error occurred while trying to create session for user.\n", e)
                                 else:
@@ -919,7 +932,7 @@ def login():
                                 #even if correct pass, but locked
                                 account_locked = True
 
-                        elif bcrypt.check_password_hash(hashed_pass, password) == False: # If wrong password
+                        elif bcrypt.check_password_hash(hashed_pass, password_to_check) == False: # If wrong password
                             print("Wrong password for:", username)
                             sql = 'SELECT * FROM account_status WHERE account_id = %s'
 
@@ -965,9 +978,10 @@ def login():
                                 sql = 'INSERT INTO account_status (account_id, failed_attempts) VALUES (%s, 1)'
                                 execute_commit(sql, val)
 
-                    else:
+
                     # if no result
-                        invalid_pass_or_username = True
+                    print("No result")
+                    invalid_pass_or_username = True
         except RateLimitExceeded:
             rate_limit=True
 
@@ -1268,7 +1282,12 @@ def reset_pass_confirmed(token):
 
                     # Get password and hash the password
                     password = request.form['password']
-                    hashed_pass = bcrypt.generate_password_hash(password)
+                    account_tuple = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s',(user_id,))
+                    salt = account_tuple['salt']
+
+                    salted_password = password+salt
+
+                    hashed_pass = bcrypt.generate_password_hash(salted_password)
 
                     # Update new password
                     sql_query = 'UPDATE accounts SET hashed_pass = %s WHERE account_id = %s'
@@ -1703,16 +1722,20 @@ def admin_login():
                     username = request.form['username']
                     password = request.form['password']
                     result = execute_fetchone("SELECT * FROM accounts WHERE username = %s AND class = 'administrator'", (username,)) # Getting data from database
+                    pwsalt = result['salt']
+                    pw_to_compare = password+pwsalt
                 except Error as e:
                     print("Unknown error occurred while retrieving user credentials.\n", e)
 
                 if result:
+
+
                     hashed_pass = result['hashed_pass']
                     account_id = result['account_id']
                     username = result['username']
                     #If able to retrieve, continue
                     # Checking if the there's a result from the sql query and checking the value of both hash function
-                    if bcrypt.check_password_hash(hashed_pass, password):
+                    if bcrypt.check_password_hash(hashed_pass, pw_to_compare):
                         if checklockedstatus(account_id) == False:
                             try:
 
@@ -1746,7 +1769,7 @@ def admin_login():
                         else:
                             account_locked = True
 
-                    elif bcrypt.check_password_hash(hashed_pass, password) == False:
+                    elif bcrypt.check_password_hash(hashed_pass, pw_to_compare) == False:
                             sql = 'SELECT * FROM account_status WHERE account_id = %s'
                             val = account_id,
 
@@ -1845,7 +1868,7 @@ def superadmin_login():
             with limiter.limit('1/minute, 5/hour, 10/day'):
                 username = form.username.data
                 secret_key = form.password.data
-                if username == 'superadmin' and secret_key == admin_secret_key:
+                if username == 'superadmin' and secret_key == execute_fetchone('SELECT * FROM superadmin_key')['superadmin_key']:
 
                     # Remove all normal user session
                     remove_all_session_user()
@@ -1908,7 +1931,10 @@ def superadmin():
             email_unique = True
         if password == reenterpassword:
             password_same = True
-            hashed_pass = bcrypt.generate_password_hash(password)
+
+            pwsalt = secrets.token_hex(16)# make salt
+            salted_password = password+pwsalt
+            hashed_pass = bcrypt.generate_password_hash(salted_password)
         else:
             password_same = False
         if int(privilege_level) >= 1 and int(privilege_level) <= 10:
@@ -1917,8 +1943,8 @@ def superadmin():
             valid_privilege_level = False
 
         if username_unique and email_unique and password_same and valid_privilege_level:
-            sql = 'INSERT INTO accounts (username, school_email, hashed_pass, class) VALUES (%s, %s, %s, %s)'
-            val = (username, email, hashed_pass, 'administrator')
+            sql = 'INSERT INTO accounts (salt, username, school_email, hashed_pass, class) VALUES (%s, %s, %s, %s, %s)'
+            val = (pwsalt, username, email, hashed_pass, 'administrator')
             execute_commit(sql, val)
             result = execute_fetchone('SELECT * FROM accounts WHERE username = %s', (username, ))
             account_id = result['account_id']
@@ -1989,3 +2015,4 @@ if __name__ == '__main__':
 #3) check for no duplicate before allowing sign up. (Fixed!)
 #4) user still can perform action even after resetting password (because we never keep changing for password change) (FIXED!)
 #5) i dont think educators or admins can post i havent tested
+#6) FIXED INVALID USERNAME OR PASSWORD PROMPT
