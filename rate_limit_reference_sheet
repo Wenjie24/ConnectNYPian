@@ -1,0 +1,29 @@
+RATE LIMITING REFERENCE SHEET
+
+DEFAULT POLICY FOR ALL ROUTE
+- 5request/second
+
+limiter.exempted route
+- @app.before_request
+- @app.errorhandler(404)
+
+/SIGNUP
+- 1/10min, 10/day
+
+/LOGIN, /admin-login
+- 1/1second, 5/min, 20/hr, 50/day
+
+/send_reset_pass
+- 1/5min, 3/day
+
+/createpost
+- 10/minute, 20/hour, 50/day
+
+/comment/<int:post_id>
+- 10/min, 20/hour, 50/day
+
+/admin_login_2fa/<token> , /confirm_email/<token>, /login_2fa/<token>, /reset_pass_confirmed/<token>
+- 1/3second
+
+/superadmin_login
+- 1/min, 5/hour, 10/day
