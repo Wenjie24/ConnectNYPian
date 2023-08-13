@@ -413,7 +413,7 @@ def before_request():
 @app.errorhandler(404)
 @limiter.exempt()
 def error_page(e):
-    return "Sorry, the page you requested does not exist.", 404
+    return render_template('/processes/error404.html')
 
 @app.route('/')
 @check_security_questions
@@ -1924,7 +1924,7 @@ def superadmin():
 @app.route('/admin-unlock-account/<int:account_id>')
 @admin_login_required
 def admin_unlock_account(account_id):
-    execute_commit("UPDATE account_status SET locked-status ='unlocked', failed_attempts=0 WHERE account_id = %s", (str(account_id), ))
+    execute_commit("UPDATE account_status SET locked_status ='unlocked', failed_attempts=0 WHERE account_id = %s", (str(account_id), ))
     return redirect(url_for('admin'))
 
 @app.route('/grant-educator-verification/<account_id>')
