@@ -1137,12 +1137,15 @@ def send_reset_pass():
             with limiter.limit('100/5minute, 3/day'):
                 try:
 
-                    if not check_login_status():
+                    if not check_login_status(): # If submitting the form
                         email = request.form['email']
                         user_id_tuple = execute_fetchone('SELECT account_id FROM accounts WHERE school_email = %s',(email,))
-                    else:
+                    elif not check_session('superadmin_status'): #elif not submitting form and not superadmin_stataus
                         user_id_tuple = execute_fetchone('SELECT * FROM accounts WHERE account_id = %s',(session['login_id'],))
                         email = user_id_tuple['school_email']
+
+                    if check_session('superadmin_status'):
+                        return 'superadmin no access to this function'
 
                 except Error as e:
                     print("ERROR OCCURED, SUCCESS = FALSE")
@@ -1898,7 +1901,11 @@ def admin():
     locked_accounts = execute_fetchall("SELECT * FROM accounts a INNER JOIN account_status ac ON a.account_id = ac.account_id WHERE ac.locked_status = 'locked'")
     verify_as_educator_requests = execute_fetchall("SELECT * FROM accounts a INNER JOIN verify_as_educator_request v ON a.account_id = v.account_id")
     reported_posts = execute_fetchall("SELECT * FROM posts p INNER JOIN report_post r ON p.post_id = r.post_id INNER JOIN accounts a ON a.account_id = p.account_id ORDER BY r.report_timestamp desc")
-    return render_template('processes/admin.html', locked_accounts=locked_accounts, verify_as_educator_requests=verify_as_educator_requests, reported_posts=reported_posts)
+
+    hide_reset = False
+    if check_session('superadmin_status'):
+        hide_reset = True
+    return render_template('processes/admin.html', hide_reset=hide_reset, locked_accounts=locked_accounts, verify_as_educator_requests=verify_as_educator_requests, reported_posts=reported_posts)
 
 @app.route('/superadmin', methods=['GET', 'POST'])
 @superadmin_login_required
