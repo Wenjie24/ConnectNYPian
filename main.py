@@ -2005,6 +2005,44 @@ def update_superadmin_sql():
 # scheduler.start()
 
 
+#MESSAGING PART NOT WOKRING
+
+#    @app.route('/contacts')
+#    def contacts():
+#        followed_users = execute_fetchall("SELECT * FROM follow_account f INNER JOIN accounts a on f.followee_id = a.account_id WHERE f.follower_id = %s ORDER BY f.followed_timestamp DESC", (str(session['login_id'], )))
+#        print(followed_users)
+#        return render_template('contacts.html', followed_users=followed_users)
+#    
+#    
+#    
+#    #CHAT ROOMS
+#    @app.route('/messages', methods=['GET', 'POST'])
+#    def messages():
+#        try:
+#            if 'login_id' not in session:
+#                return redirect(url_for('login'))
+#    
+#            if 'login_id' in session:
+#                form = send_message(request.form)
+#                execute_commit('SELECT chat_id FROM messages')
+#                sql = 'SELECT * FROM messages INNER JOIN accounts ON messages.account_id = accounts.account_id WHERE messages.chat_id = %s ORDER BY messages.sent_timestamp desc'
+#                val = (str(chat_id),)
+#                chatinfo = execute_fetchone(sql,val)
+#                if request.method == 'POST' and form.validate():
+#                    body = form.body.data
+#                    form = send_message(formdata=None)
+#                    execute_commit("INSERT INTO messages (body, account_id, chat_id) VALUES (%s, %s, %s)",(body, sender_account_id, chat_id))
+#                    # Fetch and display messages from the database
+#                    chatinfo = execute_fetchall("SELECT * FROM accounts ON messages.account_id = accounts.account_id WHERE messages.chat_id = %s ORDER BY messages.sent_timestamp desc",(str(chat_id),))
+#                    return render_template('messages.html', chatinfo=chatinfo, form=form, messages=messages)
+#    
+#            return render_template('messages.html', messages=messages, form=form, chatinfo=chatinfo)
+#        except Error as e:
+#            print('Error sending message: ', e)
+
+
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=443, ssl_context=('cert.pem', 'key.pem'))
 
